@@ -1,16 +1,11 @@
-import Button from "./components/props/passing-event/Buttons";
+import Gallery from "./components/state/Gallery";
 
-const alertFromApp = () => {
-  alert("Alert from app");
-  console.log("Alert from app");
-}
-
-function CourseTitle() {
+export default function App() {
   return (
     <>
-      <Button children={alertFromApp} />
+      <div className="container flex flex-col items-center justify-center min-h-screen">
+          <Gallery />
+      </div>
     </>
   );
 }
-
-export default CourseTitle;
