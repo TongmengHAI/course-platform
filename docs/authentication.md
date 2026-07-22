@@ -583,7 +583,262 @@ export default function Navbar() {
 
 ---
 
-## 11. 🧪 Testing with the Backend API
+## Step 7 — The Application Router (`src/routes/AppRoutes.jsx`)
+
+> **Goal:** Configure routing structure mapping paths to public pages or protected layouts under role-based authorization blocks.
+
+`src/routes/AppRoutes.jsx`
+
+```jsx
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import ProtectedRoute from '../components/ProtectedRoute';
+import LoginPage from '../pages/LoginPage';
+import RegisterPage from '../pages/RegisterPage';
+import DashboardPage from '../pages/DashboardPage';
+import Navbar from '../components/Navbar';
+
+export default function AppRoutes() {
+  return (
+    <>
+      <Navbar />
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+
+        {/* Protected Routes for Student */}
+        <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+          <Route path="/student/dashboard" element={<DashboardPage />} />
+        </Route>
+
+        {/* Protected Routes for Instructor */}
+        <Route element={<ProtectedRoute allowedRoles={['instructor']} />}>
+          <Route path="/instructor/dashboard" element={<DashboardPage />} />
+        </Route>
+
+        {/* Protected Routes for Admin */}
+        <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+          <Route path="/admin/dashboard" element={<DashboardPage />} />
+        </Route>
+
+        {/* Fallback routing */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </>
+  );
+}
+```
+
+---
+
+## Step 8 — The Root Component with Theme Config (`src/App.jsx`)
+
+> **Goal:** Inject Ant Design ConfigProvider for branding customization (Indigo color palette) and provide the Auth context.
+
+`src/App.jsx`
+
+```jsx
+import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
+import { ConfigProvider } from 'antd';
+import { AuthProvider } from './context/AuthContext';
+import AppRoutes from './routes/AppRoutes';
+
+export default function App() {
+  return (
+    <ConfigProvider
+      theme={{
+        token: {
+          colorPrimary: '#4f46e5', // Indigo primary color
+          borderRadius: 8,
+          fontFamily: "'Plus Jakarta Sans', sans-serif",
+        },
+        components: {
+          Button: {
+            controlHeightLG: 46,
+            fontWeight: 600,
+          },
+          Input: {
+            controlHeightLG: 46,
+          },
+          Select: {
+            controlHeightLG: 46,
+          },
+        },
+      }}
+    >
+      <BrowserRouter>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </BrowserRouter>
+    </ConfigProvider>
+  );
+}
+```
+
+---
+
+## Step 9 — The App Entry Point (`src/main.jsx`)
+
+`src/main.jsx`
+
+```jsx
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App.jsx'
+
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+```
+
+---
+
+## Step 10 — The Protected Dashboard View (`src/pages/DashboardPage.jsx`)
+
+`src/pages/DashboardPage.jsx`
+
+```jsx
+import React from 'react';
+import { Card, Typography, Button, Row, Col, Statistic, Avatar } from 'antd';
+import { BookOutlined, UserOutlined, FileTextOutlined, LogoutOutlined } from '@ant-design/icons';
+import { useAuth } from '../context/AuthContext';
+
+const { Title, Paragraph } = Typography;
+
+export default function DashboardPage() {
+  const { user, logout } = useAuth();
+
+  return (
+    <div className="min-h-[85vh] bg-slate-50/50 py-10 px-6 md:px-12">
+      <div className="max-w-6xl mx-auto text-left">
+        {/* Welcome Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 bg-white p-6 rounded-2xl border border-slate-100 shadow-xs">
+          <div className="flex items-center gap-4">
+            <Avatar size={64} icon={<UserOutlined />} className="bg-indigo-600 shadow-md" />
+            <div>
+              <Title level={3} className="m-0 text-slate-800 font-bold">Welcome back, {user?.username}!</Title>
+              <Paragraph className="text-slate-500 m-0">You are logged in as an <span className="font-semibold text-indigo-600 uppercase">{user?.role}</span></Paragraph>
+            </div>
+          </div>
+          <Button type="primary" danger icon={<LogoutOutlined />} onClick={logout} className="rounded-xl font-semibold h-11 border-none hover:opacity-90 cursor-pointer">
+            Sign Out
+          </Button>
+        </div>
+
+        {/* Dashboard Stats / Grid */}
+        <Row gutter={[24, 24]}>
+          <Col xs={24} sm={12} lg={8}>
+            <Card className="shadow-xs hover-lift rounded-xl border border-slate-100/80">
+              <Statistic
+                title={<span className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Active Courses</span>}
+                value={4}
+                prefix={<BookOutlined className="text-indigo-500 mr-2" />}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Card className="shadow-xs hover-lift rounded-xl border border-slate-100/80">
+              <Statistic
+                title={<span className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Certificates</span>}
+                value={2}
+                prefix={<FileTextOutlined className="text-purple-500 mr-2" />}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={24} lg={8}>
+            <Card className="shadow-xs hover-lift rounded-xl border border-slate-100/80 bg-indigo-600 text-white">
+              <div className="py-1">
+                <h3 className="m-0 text-white font-bold text-lg font-heading">Explore New Courses</h3>
+                <p className="text-indigo-100 text-xs mt-1 mb-4">Discover trending classes and elevate your skillset today.</p>
+                <Button className="bg-white hover:bg-slate-50 text-indigo-600 font-bold border-none rounded-lg h-9 shadow-sm cursor-pointer">
+                  Browse Catalog
+                </Button>
+              </div>
+            </Card>
+          </Col>
+        </Row>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Step 11 — The Styling Configuration (`src/index.css`)
+
+`src/index.css`
+
+```css
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+@import "tailwindcss";
+
+:root {
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Outfit', sans-serif;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: radial-gradient(circle at 50% 0%, #ffffff 0%, #f3f4f6 100%);
+  color: #1f2937;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* Smooth glassmorphic effect */
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+}
+
+/* Custom interactive animation classes */
+.hover-lift {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.1);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+```
+
+---
+
+## 12. 🧪 Testing with the Backend API
 
 1. Start your backend API server on port 5000 (`http://localhost:5000`).
 2. Start your frontend development server (`npm run dev`).
@@ -599,7 +854,7 @@ export default function Navbar() {
 
 ---
 
-## 12. 🛠 Common Errors & Fixes
+## 13. 🛠 Common Errors & Fixes
 
 | Symptom | Likely Cause | Fix |
 |---|---|---|
@@ -610,7 +865,7 @@ export default function Navbar() {
 
 ---
 
-## 13. 📋 Completion Checklist
+## 14. 📋 Completion Checklist
 
 - [x] Installed `antd`, `@ant-design/icons`, `axios`, `react-router-dom`.
 - [x] Created `api.js` with request interceptor (`Authorization: Bearer token`).
@@ -618,3 +873,8 @@ export default function Navbar() {
 - [x] Created `LoginPage.jsx` and `RegisterPage.jsx` using Ant Design Forms.
 - [x] Created `ProtectedRoute.jsx` for auth & role checking.
 - [x] Integrated `Navbar.jsx` with user avatar dropdown menu.
+- [x] Added `AppRoutes.jsx` for central routing structure configuration.
+- [x] Integrated `ConfigProvider` custom branding in `App.jsx`.
+- [x] Configured `main.jsx` and `index.css` for custom typography and styling.
+- [x] Added dynamic cards and status checks to `DashboardPage.jsx`.
+
