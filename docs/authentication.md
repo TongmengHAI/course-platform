@@ -584,9 +584,9 @@ export default function Navbar() {
 
 ## 13. 📋 Completion Checklist
 
-- [ ] Installed `antd`, `@ant-design/icons`, `axios`, `react-router-dom`.
-- [ ] Created `api.js` with request interceptor (`Authorization: Bearer token`).
-- [ ] Built `AuthContext.jsx` with `login()`, `register()`, and `logout()` methods.
-- [ ] Created `LoginPage.jsx` and `RegisterPage.jsx` using Ant Design Forms.
-- [ ] Created `ProtectedRoute.jsx` for auth & role checking.
-- [ ] Integrated `Navbar.jsx` with user avatar dropdown menu.
+- [x] Installed `antd`, `@ant-design/icons`, `axios`, `react-router-dom`.
+- [x] Created `api.js` with request interceptor (`Authorization: Bearer token`).
+- [x] Built `AuthContext.jsx` with `login()`, `register()`, and `logout()` methods.
+- [x] Created `LoginPage.jsx` and `RegisterPage.jsx` using Ant Design Forms.
+- [x] Created `ProtectedRoute.jsx` for auth & role checking.
+- [x] Integrated `Navbar.jsx` with user avatar dropdown menu.
