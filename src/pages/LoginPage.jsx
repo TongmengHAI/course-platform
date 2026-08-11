@@ -19,7 +19,11 @@ export default function LoginPage() {
       if (user.role === 'admin') navigate('/admin/dashboard');
       else if (user.role === 'instructor') navigate('/instructor/dashboard');
       else navigate('/student/dashboard');
+      // if (user.role === 'admin') console.log('Welcome to Admin Dashboard');
+      // else if (user.role === 'instructor') console.log('Welcome to Instructor Dashboard');
+      // else console.log('Welcome to Student Dashboard');
     } catch (err) {
+      console.error('Login error:', err);
       // Error handled by Axios response interceptor
     }
   };

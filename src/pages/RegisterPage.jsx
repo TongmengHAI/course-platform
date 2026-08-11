@@ -8,7 +8,7 @@ import {
   UserAddOutlined,
   BookOutlined,
 } from "@ant-design/icons";
-// import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from "../context/AuthContext";
 
 const { Title, Text } = Typography;
@@ -16,7 +16,7 @@ const { Option } = Select;
 
 export default function RegisterPage() {
   const { register, loading } = useAuth();
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
 
   const onFinish = async (values) => {
     if (values.password !== values.confirm_password) {
@@ -33,7 +33,7 @@ export default function RegisterPage() {
         values.role,
       );
       message.success("Registration successful! Please log in.", user);
-      // navigate('/login');
+      navigate('/login');
     } catch (err) {
       console.error("Registration error:", err);
       // Error handled by Axios response interceptor
@@ -174,7 +174,7 @@ export default function RegisterPage() {
 
         <div className="text-center mt-6 border-t border-slate-100 pt-4">
           <Text className="text-slate-500">Already have an account? </Text>
-          {/* <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-700">Log in here</Link> */}
+          <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-700">Log in here</Link>
         </div>
       </Card>
     </div>
