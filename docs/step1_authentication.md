@@ -302,7 +302,7 @@ export default function RegisterPage() {
             label={<span className="font-semibold text-slate-600">Phone Number</span>}
             rules={[{ required: true, message: 'Please enter your phone number!' }]}
           >
-            <Input prefix={<PhoneOutlined className="text-slate-400" />} placeholder="0123456789" />
+            <Input prefix={<PhoneOutlined className="text-slate-400" />} placeholder="096123456" />
           </Form.Item>
 
           <Form.Item

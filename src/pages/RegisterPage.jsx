@@ -110,7 +110,7 @@ export default function RegisterPage() {
           >
             <Input
               prefix={<PhoneOutlined className="text-slate-400" />}
-              placeholder="0123456789"
+              placeholder="096123456"
             />
           </Form.Item>
 
