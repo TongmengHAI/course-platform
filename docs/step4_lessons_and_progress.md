@@ -62,8 +62,8 @@ This page features a split-pane layout:
 ```jsx
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Layout, Menu, Typography, Checkbox, Spin, Button, message, Card } from 'antd';
-import { ArrowLeftOutlined, CheckCircleFilled, PlayCircleOutlined } from '@ant-design/icons';
+import { Layout, Menu, Typography, Checkbox, Spin, Button, message, Card, Row, Col } from 'antd';
+import { ArrowLeftOutlined, CheckCircleFilled, PlayCircleOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
 import api from '../services/api';
 
 const { Sider, Content } = Layout;
@@ -78,12 +78,17 @@ export default function LessonViewerPage() {
   const [activeLesson, setActiveLesson] = useState(null);
   const [completedLessons, setCompletedLessons] = useState([]);
   const [updating, setUpdating] = useState(false);
+  
+  // Navigation states
+  const [prevLessonId, setPrevLessonId] = useState(null);
+  const [nextLessonId, setNextLessonId] = useState(null);
 
   const fetchCourseData = async () => {
     try {
       // 1. Fetch full syllabus (sections & lessons list)
       const syllabusRes = await api.get(`/courses/${courseId}/syllabus`);
-      setSyllabus(syllabusRes.data || []);
+      const syllabusData = syllabusRes.data || [];
+      setSyllabus(syllabusData);
 
       // 2. Fetch student completion list
       const progressRes = await api.get(`/enrollments/${courseId}/progress`);
@@ -92,15 +97,25 @@ export default function LessonViewerPage() {
         .map(item => item.lesson.id);
       setCompletedLessons(completedIds);
 
-      // Find active lesson context
+      // Find active lesson context & setup navigation pointers
       let foundLesson = null;
-      for (const section of syllabusRes.data) {
-        const matching = section.lessons.find(l => l.id === Number(lessonId));
-        if (matching) {
-          foundLesson = matching;
-          break;
+      let allLessons = [];
+      
+      syllabusData.forEach(section => {
+        if (section.lessons) {
+          allLessons.push(...section.lessons);
         }
+      });
+
+      const currentIndex = allLessons.findIndex(l => l.id === Number(lessonId));
+      if (currentIndex !== -1) {
+        foundLesson = allLessons[currentIndex];
+        
+        // Prev / Next pointers
+        setPrevLessonId(currentIndex > 0 ? allLessons[currentIndex - 1].id : null);
+        setNextLessonId(currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1].id : null);
       }
+      
       setActiveLesson(foundLesson);
     } catch (err) {
       console.error("Error loading syllabus data:", err);
@@ -133,68 +148,106 @@ export default function LessonViewerPage() {
     }
   };
 
-  if (loading) return <div className="flex justify-center py-20"><Spin size="large" /></div>;
+  if (loading) return <div className="flex justify-center py-20"><Spin size="large" tip="Loading lesson..." /></div>;
 
   return (
     <Layout className="min-h-[85vh] bg-white text-left animate-fadeIn">
+      
       {/* Syllabus Sidebar panel */}
-      <Sider width={300} className="bg-slate-50 border-r border-slate-100 py-4 px-2" theme="light">
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/student/dashboard')} className="w-full mb-4 rounded-lg font-semibold">
+      <Sider width={320} className="bg-slate-50 border-r border-slate-100 py-6 px-3" theme="light">
+        <Button 
+          icon={<ArrowLeftOutlined />} 
+          onClick={() => navigate('/student/dashboard')} 
+          className="w-full mb-6 rounded-xl font-bold h-10 border-slate-200 text-slate-600 cursor-pointer"
+        >
           Back to Dashboard
         </Button>
-        <div className="font-bold text-slate-800 text-sm px-3 mb-3 uppercase tracking-wider">Course Syllabus</div>
+        <div className="font-extrabold text-slate-800 text-xs px-3 mb-4 uppercase tracking-wider">Course Curriculum</div>
         
-        {syllabus.map(section => (
-          <div key={section.id} className="mb-4">
-            <div className="font-semibold text-slate-500 text-xs px-3 mb-1">{section.title}</div>
-            <Menu
-              mode="inline"
-              selectedKeys={[lessonId]}
-              className="bg-transparent border-none"
-              onClick={({ key }) => navigate(`/student/courses/${courseId}/lessons/${key}`)}
-            >
-              {section.lessons.map(lesson => (
-                <Menu.Item key={lesson.id} icon={
-                  completedLessons.includes(lesson.id) ? 
-                  <CheckCircleFilled className="text-emerald-500" /> : 
-                  <PlayCircleOutlined />
-                }>
-                  <span className="text-slate-700">{lesson.title}</span>
-                </Menu.Item>
-              ))}
-            </Menu>
-          </div>
-        ))}
+        <div className="overflow-y-auto max-h-[60vh] space-y-4">
+          {syllabus.map(section => (
+            <div key={section.id} className="mb-2">
+              <div className="font-bold text-slate-400 text-2xs px-3 mb-2 uppercase tracking-wide">{section.title}</div>
+              <Menu
+                mode="inline"
+                selectedKeys={[lessonId]}
+                className="bg-transparent border-none"
+                onClick={({ key }) => navigate(`/student/courses/${courseId}/lessons/${key}`)}
+              >
+                {section.lessons.map(lesson => (
+                  <Menu.Item key={lesson.id} icon={
+                    completedLessons.includes(lesson.id) ? 
+                    <CheckCircleFilled className="text-emerald-500 text-sm" /> : 
+                    <PlayCircleOutlined className="text-slate-400 text-sm" />
+                  } className="rounded-xl my-1 h-9 flex items-center">
+                    <span className="text-slate-700 text-xs font-semibold">{lesson.title}</span>
+                  </Menu.Item>
+                ))}
+              </Menu>
+            </div>
+          ))}
+        </div>
       </Sider>
 
       {/* Lesson View panel */}
-      <Content className="p-8 md:p-12 bg-white">
+      <Content className="p-8 md:p-12 bg-white flex flex-col justify-between h-[85vh]">
         {activeLesson ? (
-          <div className="max-w-3xl">
-            <Title level={2} className="font-extrabold text-slate-800 m-0 mb-6">{activeLesson.title}</Title>
-            <Paragraph className="text-slate-600 text-base leading-relaxed mb-8 whitespace-pre-wrap">
+          <div className="max-w-3xl flex-grow">
+            <div className="flex items-center gap-2 mb-2 text-indigo-600 font-bold text-xs uppercase tracking-wider">
+              <PlayCircleOutlined /> Active Lesson
+            </div>
+            <Title level={2} className="font-extrabold text-slate-800 tracking-tight m-0 mb-6">{activeLesson.title}</Title>
+            <Paragraph className="text-slate-600 text-sm md:text-base leading-relaxed mb-8 whitespace-pre-wrap">
               {activeLesson.content || "This lesson content is empty."}
             </Paragraph>
 
-            <Card className="bg-slate-50 border border-slate-100 rounded-xl p-2 mt-12">
+            <Card className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-2 mt-12">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-bold text-slate-700">Finished learning?</div>
-                  <div className="text-slate-400 text-xs mt-0.5">Toggle box to check off lesson modules from tracking stats.</div>
+                  <div className="font-bold text-emerald-800 text-sm">Finished learning?</div>
+                  <div className="text-emerald-600/70 text-xs mt-0.5">Check this box to record your learning progress stats.</div>
                 </div>
                 <Checkbox
                   checked={completedLessons.includes(Number(lessonId))}
                   onChange={handleToggleComplete}
                   disabled={updating}
-                  className="font-bold scale-125 text-indigo-600"
+                  className="font-bold scale-125 text-emerald-600 cursor-pointer"
                 >
                   Completed
                 </Checkbox>
               </div>
             </Card>
+            
+            {/* Navigation Buttons Row */}
+            <Row justify="space-between" align="middle" className="mt-10 border-t border-slate-100 pt-6">
+              <Col>
+                <Button 
+                  icon={<LeftOutlined />} 
+                  disabled={!prevLessonId} 
+                  onClick={() => navigate(`/student/courses/${courseId}/lessons/${prevLessonId}`)}
+                  className="rounded-xl font-bold h-10 px-4 cursor-pointer"
+                >
+                  Previous
+                </Button>
+              </Col>
+              <Col>
+                <Button 
+                  type="primary"
+                  icon={<RightOutlined />} 
+                  disabled={!nextLessonId} 
+                  onClick={() => navigate(`/student/courses/${courseId}/lessons/${nextLessonId}`)}
+                  className="bg-indigo-600 hover:bg-indigo-700 border-none rounded-xl font-bold h-10 px-4 cursor-pointer"
+                >
+                  Next Lesson
+                </Button>
+              </Col>
+            </Row>
           </div>
         ) : (
-          <div className="text-center py-20"><Title level={4} type="danger">Select a lesson to begin learning.</Title></div>
+          <div className="text-center py-20">
+            <PlayCircleOutlined className="text-4xl text-slate-300 mb-3" />
+            <Title level={4} className="text-slate-500 m-0">Select a lesson to begin learning.</Title>
+          </div>
         )}
       </Content>
     </Layout>

@@ -95,8 +95,8 @@ The Catalog fetches courses from `GET /courses` and allows students to filter by
 `src/pages/CourseCatalogPage.jsx`
 ```jsx
 import React, { useEffect, useState } from 'react';
-import { Card, Input, Select, Row, Col, Typography, Spin, Button } from 'antd';
-import { SearchOutlined, BookOutlined } from '@ant-design/icons';
+import { Card, Input, Select, Row, Col, Typography, Spin, Button, Tag, Rate } from 'antd';
+import { SearchOutlined, BookOutlined, FilterOutlined, StarFilled } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
@@ -130,60 +130,115 @@ export default function CourseCatalogPage() {
     fetchCourses();
   }, [search, level]);
 
+  const getLevelTagColor = (lvl) => {
+    if (lvl === 'Beginner') return 'success';
+    if (lvl === 'Intermediate') return 'processing';
+    return 'warning';
+  };
+
   return (
     <div className="min-h-[85vh] bg-slate-50/50 py-10 px-6 md:px-12 text-left animate-fadeIn">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <Title level={2} className="font-bold text-slate-800 m-0">Course Catalog</Title>
-          <Text className="text-slate-500">Explore learning material led by domain experts</Text>
+        
+        {/* Modern Hero Section */}
+        <div className="bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 text-white rounded-3xl p-8 md:p-12 mb-10 relative overflow-hidden shadow-md">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/20 via-transparent to-transparent pointer-events-none" />
+          <div className="relative z-10 max-w-2xl">
+            <span className="text-2xs font-bold tracking-wider uppercase bg-indigo-500/30 text-indigo-200 px-3 py-1 rounded-full border border-indigo-500/20">
+              E-Learning Hub
+            </span>
+            <Title level={1} className="text-white font-extrabold mt-4 mb-4 tracking-tight m-0" style={{ color: 'white' }}>
+              Expand Your Skills
+            </Title>
+            <Paragraph className="text-slate-300 text-sm md:text-base mb-0 font-normal leading-relaxed">
+              Explore professional course tracks led by domain experts. Start learning and upgrading your developer career path today.
+            </Paragraph>
+          </div>
         </div>
 
         {/* Toolbar Filter panel */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8 bg-white p-4 rounded-xl border border-slate-100 shadow-xs">
-          <Input
-            prefix={<SearchOutlined className="text-slate-400" />}
-            placeholder="Search courses..."
-            allowClear
-            onChange={(e) => setSearch(e.target.value)}
-            className="max-w-md h-10"
-          />
-          <Select
-            placeholder="Filter by Level"
-            allowClear
-            onChange={setLevel}
-            className="w-48 h-10"
-          >
-            <Option value="Beginner">Beginner</Option>
-            <Option value="Intermediate">Intermediate</Option>
-            <Option value="Advanced">Advanced</Option>
-          </Select>
+        <div className="flex flex-col sm:flex-row gap-4 mb-8 bg-white p-5 rounded-2xl border border-slate-100 shadow-xs justify-between items-center">
+          <div className="flex items-center gap-2">
+            <FilterOutlined className="text-indigo-600 text-lg" />
+            <Text className="font-bold text-slate-700 text-sm">Filter Options</Text>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+            <Input
+              prefix={<SearchOutlined className="text-slate-400" />}
+              placeholder="Search by title, desc..."
+              allowClear
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full sm:w-80 h-10 rounded-xl"
+            />
+            <Select
+              placeholder="Difficulty Level"
+              allowClear
+              onChange={setLevel}
+              className="w-full sm:w-48 h-10"
+              dropdownStyle={{ borderRadius: '12px' }}
+            >
+              <Option value="Beginner">Beginner</Option>
+              <Option value="Intermediate">Intermediate</Option>
+              <Option value="Advanced">Advanced</Option>
+            </Select>
+          </div>
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-20"><Spin size="large" /></div>
+          <div className="flex justify-center py-20"><Spin size="large" tip="Loading catalog..." /></div>
         ) : (
           <Row gutter={[24, 24]}>
-            {courses.map((course) => (
-              <Col xs={24} sm={12} lg={8} key={course.id}>
-                <Card
-                  hoverable
-                  className="shadow-xs rounded-2xl border border-slate-100 overflow-hidden hover-lift flex flex-col h-full"
-                  bodyStyle={{ padding: '20px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}
-                  onClick={() => navigate(`/courses/${course.id}`)}
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded text-xs uppercase">{course.level || 'All Levels'}</span>
-                    <span className="text-slate-400 text-xs">{course.category}</span>
-                  </div>
-                  <Title level={4} className="m-0 text-slate-800 font-bold line-clamp-1">{course.title}</Title>
-                  <Paragraph className="text-slate-500 text-sm mt-2 flex-grow line-clamp-2">{course.description}</Paragraph>
-                  <div className="border-t border-slate-50 pt-3 mt-4 flex items-center justify-between">
-                    <Text className="font-bold text-lg text-indigo-600">${course.price || 0}</Text>
-                    <Button type="link" className="font-semibold p-0">View Course →</Button>
-                  </div>
+            {courses.length === 0 ? (
+              <Col span={24}>
+                <Card className="text-center py-16 rounded-2xl border border-dashed border-slate-200">
+                  <BookOutlined className="text-4xl text-slate-300 mb-3" />
+                  <Title level={4} className="text-slate-700 m-0">No Courses Found</Title>
+                  <Paragraph className="text-slate-400 mt-1">Try adjusting your filters or search keywords.</Paragraph>
                 </Card>
               </Col>
-            ))}
+            ) : (
+              courses.map((course) => (
+                <Col xs={24} sm={12} lg={8} key={course.id}>
+                  <Card
+                    hoverable
+                    className="shadow-xs rounded-2xl border border-slate-100/80 overflow-hidden hover-lift flex flex-col h-full bg-white relative"
+                    bodyStyle={{ padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}
+                    onClick={() => navigate(`/courses/${course.id}`)}
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <Tag color={getLevelTagColor(course.level)} className="font-semibold px-2 py-0.5 rounded-md border-none uppercase text-3xs">
+                        {course.level || 'All Levels'}
+                      </Tag>
+                      <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">{course.category || 'Development'}</span>
+                    </div>
+                    
+                    <Title level={4} className="m-0 text-slate-800 font-bold tracking-tight line-clamp-1 mb-2 hover:text-indigo-600 transition">
+                      {course.title}
+                    </Title>
+                    
+                    <Paragraph className="text-slate-500 text-xs leading-relaxed mt-1 flex-grow line-clamp-3 mb-6">
+                      {course.description}
+                    </Paragraph>
+
+                    <div className="flex items-center gap-1.5 mb-4">
+                      <StarFilled className="text-amber-400 text-xs" />
+                      <Text className="text-slate-700 font-bold text-xs">4.7</Text>
+                      <Text className="text-slate-400 text-2xs">(42 reviews)</Text>
+                    </div>
+                    
+                    <div className="border-t border-slate-100 pt-4 flex items-center justify-between mt-auto">
+                      <div className="flex flex-col">
+                        <span className="text-slate-400 text-3xs uppercase font-bold tracking-wider">Fee</span>
+                        <Text className="font-extrabold text-lg text-indigo-600">${course.price || 0}</Text>
+                      </div>
+                      <Button type="primary" className="bg-indigo-600 hover:bg-indigo-700 border-none font-semibold rounded-xl text-xs px-4 h-9 cursor-pointer">
+                        Explore
+                      </Button>
+                    </div>
+                  </Card>
+                </Col>
+              ))
+            )}
           </Row>
         )}
       </div>
@@ -202,8 +257,8 @@ This fetches data for a single course via route ID parameters (`GET /courses/:id
 ```jsx
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Button, Spin, Typography, Tag } from 'antd';
-import { ArrowLeftOutlined } from '@ant-design/icons';
+import { Card, Button, Spin, Typography, Tag, Divider, Collapse } from 'antd';
+import { ArrowLeftOutlined, PlayCircleOutlined, GlobalOutlined, FieldTimeOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import api from '../services/api';
 
 const { Title, Paragraph, Text } = Typography;
@@ -228,36 +283,112 @@ export default function CourseDetailPage() {
     fetchCourse();
   }, [id]);
 
-  if (loading) return <div className="flex justify-center py-20"><Spin size="large" /></div>;
+  const getLevelTagColor = (lvl) => {
+    if (lvl === 'Beginner') return 'success';
+    if (lvl === 'Intermediate') return 'processing';
+    return 'warning';
+  };
+
+  if (loading) return <div className="flex justify-center py-20"><Spin size="large" tip="Loading details..." /></div>;
   if (!course) return <div className="text-center py-20"><Text type="danger">Course not found</Text></div>;
+
+  // Mock syllabus data for visual placeholder layout
+  const syllabusItems = [
+    {
+      key: '1',
+      label: <span className="font-bold text-slate-700">Section 1: Course Fundamentals</span>,
+      children: (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2"><PlayCircleOutlined className="text-indigo-600" /> <Text>1.1 Core introduction setup</Text></div>
+          <div className="flex items-center gap-2"><PlayCircleOutlined className="text-indigo-600" /> <Text>1.2 Reviewing developer toolkit basics</Text></div>
+        </div>
+      ),
+    }
+  ];
 
   return (
     <div className="min-h-[85vh] bg-slate-50/50 py-10 px-6 md:px-12 text-left">
-      <div className="max-w-4xl mx-auto">
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/courses')} className="mb-6 rounded-lg font-semibold">
+      <div className="max-w-5xl mx-auto">
+        
+        {/* Back Button */}
+        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/courses')} className="mb-6 rounded-xl font-semibold border-slate-200">
           Back to Catalog
         </Button>
 
-        <Card className="shadow-xs rounded-2xl border border-slate-100 p-4 bg-white animate-fadeIn">
-          <div className="flex items-center gap-3 mb-4">
-            <Tag color="indigo" className="m-0 font-semibold px-2 py-0.5 rounded text-xs uppercase">{course.level}</Tag>
-            <Tag className="m-0 text-slate-500 font-semibold px-2 py-0.5 rounded text-xs uppercase">{course.category}</Tag>
-          </div>
-
-          <Title level={2} className="font-extrabold text-slate-800 m-0 mb-4">{course.title}</Title>
-          <Paragraph className="text-slate-600 text-base leading-relaxed mb-6 whitespace-pre-wrap">{course.description}</Paragraph>
-
-          <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-8">
-            <div>
-              <Text className="text-slate-400 block text-xs font-semibold uppercase tracking-wider">Instructor</Text>
-              <Text className="font-bold text-slate-700 text-base">{course.instructor?.username || 'Unknown'}</Text>
+        {/* Two Column Layout */}
+        <Row gutter={[28, 28]}>
+          
+          {/* Left Column: Course details & Syllabus */}
+          <Col xs={24} md={15}>
+            <div className="flex items-center gap-2.5 mb-4">
+              <Tag color={getLevelTagColor(course.level)} className="m-0 font-semibold px-2 py-0.5 rounded-md border-none uppercase text-3xs">
+                {course.level}
+              </Tag>
+              <Tag className="m-0 text-slate-500 font-semibold px-2 py-0.5 rounded-md border-slate-200 uppercase text-3xs">
+                {course.category}
+              </Tag>
             </div>
-            <div>
-              <Text className="text-slate-400 block text-xs font-semibold uppercase tracking-wider">Course Fee</Text>
-              <Text className="font-extrabold text-2xl text-indigo-600">${course.price}</Text>
-            </div>
-          </div>
-        </Card>
+
+            <Title level={2} className="font-extrabold text-slate-800 tracking-tight m-0 mb-6">
+              {course.title}
+            </Title>
+
+            <Card className="shadow-xs rounded-2xl border border-slate-100 p-2 bg-white mb-8">
+              <Title level={4} className="font-bold text-slate-800 mb-4 mt-0">About Course</Title>
+              <Paragraph className="text-slate-600 text-sm leading-relaxed mb-0 whitespace-pre-wrap">
+                {course.description || "No description provided."}
+              </Paragraph>
+            </Card>
+
+            <Card className="shadow-xs rounded-2xl border border-slate-100 p-2 bg-white">
+              <Title level={4} className="font-bold text-slate-800 mb-4 mt-0">Syllabus Curriculum</Title>
+              <Collapse items={syllabusItems} defaultActiveKey={['1']} className="bg-slate-50 border-none rounded-xl" />
+            </Card>
+          </Col>
+
+          {/* Right Column: Sticky Pricing & Action Panel */}
+          <Col xs={24} md={9}>
+            <Card className="shadow-md rounded-2xl border border-slate-100 bg-white sticky top-24 p-2">
+              <div className="text-center mb-6">
+                <Text className="text-slate-400 block text-xs font-bold uppercase tracking-wider mb-1">Fee</Text>
+                <Title level={1} className="font-extrabold text-indigo-600 m-0 tracking-tight" style={{ color: '#4f46e5' }}>
+                  ${course.price}
+                </Title>
+              </div>
+
+              <Divider className="my-4 border-slate-100" />
+
+              <div className="space-y-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <GlobalOutlined className="text-slate-400 text-lg" />
+                  <Text className="text-slate-600 text-xs">Self-paced learning structure</Text>
+                </div>
+                <div className="flex items-center gap-3">
+                  <FieldTimeOutlined className="text-slate-400 text-lg" />
+                  <Text className="text-slate-600 text-xs">Lifetime access to content</Text>
+                </div>
+                <div className="flex items-center gap-3">
+                  <SafetyCertificateOutlined className="text-slate-400 text-lg" />
+                  <Text className="text-slate-600 text-xs">Certificate on final milestone completion</Text>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-6">
+                <Text className="text-slate-400 block text-3xs uppercase font-bold tracking-wider mb-1">Instructor</Text>
+                <Text className="font-bold text-slate-800 text-sm block">{course.instructor?.username || 'Unknown'}</Text>
+                <Text className="text-slate-400 text-xs">{course.instructor?.email || 'instructor@test.com'}</Text>
+              </div>
+
+              {/* Action Button Area (Enrollment hooks will bind here in Step 3) */}
+              <div className="space-y-2">
+                <Button type="primary" block size="large" className="bg-indigo-600 hover:bg-indigo-700 border-none font-bold rounded-xl h-11 cursor-pointer">
+                  Explore Mode
+                </Button>
+              </div>
+            </Card>
+          </Col>
+
+        </Row>
       </div>
     </div>
   );
