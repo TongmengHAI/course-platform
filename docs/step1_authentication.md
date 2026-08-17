@@ -838,7 +838,209 @@ body {
 
 ---
 
-## 12. 🧪 Testing with the Backend API
+## 12. 🔁 Advanced: Implementing Frontend Refresh Tokens (Silent Refresh)
+
+When using short-lived access tokens (e.g. 15 minutes) for security, you don't want the user to be kicked out to the login screen every time the token expires. Instead, you use a **Refresh Token** to silently obtain a new access token behind the scenes.
+
+Here is how to implement the frontend silent refresh flow.
+
+### Step 1 — Store and Revoke the Refresh Token in `AuthContext.jsx`
+
+Open `src/context/AuthContext.jsx`. We need to:
+1. Store the `refreshToken` in `localStorage` when logging in.
+2. In the `logout()` handler, call the backend `POST /auth/logout` to revoke the token on the server, and clear it from the browser storage.
+
+Update the `login` and `logout` handlers in `src/context/AuthContext.jsx`:
+
+```jsx
+// 1) Update the login function to save the refreshToken
+const login = async (phone, password) => {
+  setLoading(true);
+  try {
+    const response = await api.post('/auth/login', { phone, password });
+    
+    const token = response.token;
+    const refreshToken = response.refreshToken; // Read from backend response
+    const authenticatedUser = response.data;
+    
+    localStorage.setItem('token', token);
+    localStorage.setItem('refreshToken', refreshToken); // Save refresh token
+    localStorage.setItem('user', JSON.stringify(authenticatedUser));
+    
+    setUser(authenticatedUser);
+    return authenticatedUser;
+  } finally {
+    setLoading(false);
+  }
+};
+
+// 2) Update the logout function to call backend logout and delete refresh token
+const logout = async () => {
+  const refreshToken = localStorage.getItem('refreshToken');
+  if (refreshToken) {
+    try {
+      // Invalidate the token on the backend
+      await api.post('/auth/logout', { refreshToken });
+    } catch (err) {
+      console.error("Logout request failed:", err);
+    }
+  }
+  
+  // Clear local storage and state
+  localStorage.removeItem('token');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('user');
+  setUser(null);
+};
+```
+
+---
+
+### Step 2 — Silent Refresh Interceptor in `api.js`
+
+Open `src/services/api.js`. Currently, on a `401 Unauthorized` response, we immediately redirect to `/login`. 
+
+Instead, we want to:
+1. Intercept the `401` response.
+2. Call `POST /auth/refresh` with the stored `refreshToken`.
+3. If the refresh succeeds:
+   - Save the new `accessToken`.
+   - Update the original failed request with the new token.
+   - Retry the request.
+4. If the refresh fails (or the refresh token itself is expired):
+   - Redirect to `/login`.
+
+To handle multiple API calls failing simultaneously (concurrency), we use:
+- `isRefreshing`: A flag to ensure we only make one refresh request at a time.
+- `failedQueue`: An array to queue other failed requests until the new token is fetched, then execute them all.
+
+Replace the response interceptor in `src/services/api.js` with the following:
+
+```javascript
+import axios from 'axios';
+import { message } from 'antd';
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request Interceptor: Attach access token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Concurrency queue to hold multiple failed requests during refresh
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
+// Response Interceptor: Handle errors and refresh tokens
+api.interceptors.response.use(
+  (response) => response.data,
+  async (error) => {
+    const originalRequest = error.config;
+    const status = error.response?.status;
+    const errMsg = error.response?.data?.message || 'An error occurred. Please try again.';
+
+    // Check if 401 and not already retried
+    if (status === 401 && !originalRequest._retry) {
+      if (originalRequest.url === '/auth/login' || originalRequest.url === '/auth/refresh') {
+        // If login or refresh endpoint returns 401, clear credentials and log out
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        // Queue this request if we are already fetching a new token
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (!refreshToken) {
+        // No refresh token available, must log in again
+        message.error('Session expired. Please login again.');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        return Promise.reject(error);
+      }
+
+      try {
+        // Request a new access token
+        const response = await axios.post(`${api.defaults.baseURL}/auth/refresh`, {
+          refreshToken,
+        });
+
+        const newAccessToken = response.data.accessToken;
+        localStorage.setItem('token', newAccessToken);
+
+        // Update headers & retry original request
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        processQueue(null, newAccessToken);
+
+        return api(originalRequest);
+      } catch (refreshError) {
+        // Refresh token is invalid/expired, clean up and redirect
+        processQueue(refreshError, null);
+        message.error('Session expired. Please login again.');
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    if (status === 403) {
+      message.error('Forbidden: You do not have permission.');
+    } else if (status !== 401) {
+      message.error(errMsg);
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+export default api;
+```
+
+---
+
+## 13. 🧪 Testing with the Backend API
 
 1. Start your backend API server on port 5000 (`http://localhost:5000`).
 2. Start your frontend development server (`npm run dev`).
@@ -854,7 +1056,7 @@ body {
 
 ---
 
-## 13. 🛠 Common Errors & Fixes
+## 14. 🛠 Common Errors & Fixes
 
 | Symptom | Likely Cause | Fix |
 |---|---|---|
@@ -865,7 +1067,7 @@ body {
 
 ---
 
-## 14. 📋 Completion Checklist
+## 15. 📋 Completion Checklist
 
 - [x] Installed `antd`, `@ant-design/icons`, `axios`, `react-router-dom`.
 - [x] Created `api.js` with request interceptor (`Authorization: Bearer token`).
@@ -877,4 +1079,6 @@ body {
 - [x] Integrated `ConfigProvider` custom branding in `App.jsx`.
 - [x] Configured `main.jsx` and `index.css` for custom typography and styling.
 - [x] Added dynamic cards and status checks to `DashboardPage.jsx`.
+- [ ] Added Refresh Token management to `AuthContext.jsx` (`localStorage` & server revocation logout).
+- [ ] Implemented Axios response interceptor for silent token refresh queue.
 
