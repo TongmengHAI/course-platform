@@ -10,19 +10,29 @@ A step-by-step guide for building the client-side authentication system for the 
 
 ## 📚 Table of Contents
 
-1. [What is Frontend Authentication?](#1-what-is-frontend-authentication)
-2. [The Big Picture (Client Request & Token Flow)](#2-the-big-picture-client-request--token-flow)
-3. [Project Architecture](#3-project-architecture)
-4. [Prerequisites & Setup](#4-prerequisites--setup)
-5. [Step 1 — The Axios HTTP Service (Token Interceptor)](#step-1--the-axios-http-service-token-interceptor)
-6. [Step 2 — The Auth Context & Provider (`AuthContext.jsx`)](#step-2--the-auth-context--provider-authcontextjsx)
-7. [Step 3 — The Register Page (Ant Design Form)](#step-3--the-register-page-ant-design-form)
-8. [Step 4 — The Login Page (Ant Design Form)](#step-4--the-login-page-ant-design-form)
-9. [Step 5 — Protected Routes & Role Guards](#step-5--protected-routes--role-guards)
-10. [Step 6 — User Navigation Dropdown (Header Avatar)](#step-6--user-navigation-dropdown-header-avatar)
-11. [Testing with the Backend API](#11-testing-with-the-backend-api)
-12. [Common Errors & Fixes](#12-common-errors--fixes)
-13. [Completion Checklist](#13-completion-checklist)
+- [🔐 Frontend Authentication — Zero to Completed (React + Ant Design)](#-frontend-authentication--zero-to-completed-react--ant-design)
+  - [📚 Table of Contents](#-table-of-contents)
+  - [1. What is Frontend Authentication?](#1-what-is-frontend-authentication)
+  - [2. 🔄 The Big Picture (Client Request \& Token Flow)](#2--the-big-picture-client-request--token-flow)
+  - [3. 🏗 Project Architecture](#3--project-architecture)
+  - [4. ⚙ Prerequisites \& Setup](#4--prerequisites--setup)
+  - [Step 1 — The Axios HTTP Service (`src/services/api.js`)](#step-1--the-axios-http-service-srcservicesapijs)
+  - [Step 2 — The Auth Context \& Provider (`src/context/AuthContext.jsx`)](#step-2--the-auth-context--provider-srccontextauthcontextjsx)
+  - [Step 3 — The Register Page (`src/pages/RegisterPage.jsx`)](#step-3--the-register-page-srcpagesregisterpagejsx)
+  - [Step 4 — The Login Page (`src/pages/LoginPage.jsx`)](#step-4--the-login-page-srcpagesloginpagejsx)
+  - [Step 5 — Protected Routes \& Role Guards (`src/components/ProtectedRoute.jsx`)](#step-5--protected-routes--role-guards-srccomponentsprotectedroutejsx)
+  - [Step 6 — User Navigation Dropdown (`src/components/Navbar.jsx`)](#step-6--user-navigation-dropdown-srccomponentsnavbarjsx)
+  - [Step 7 — The Application Router (`src/routes/AppRoutes.jsx`)](#step-7--the-application-router-srcroutesapproutesjsx)
+  - [Step 8 — The Root Component with Theme Config (`src/App.jsx`)](#step-8--the-root-component-with-theme-config-srcappjsx)
+  - [Step 9 — The App Entry Point (`src/main.jsx`)](#step-9--the-app-entry-point-srcmainjsx)
+  - [Step 10 — The Protected Dashboard View (`src/pages/DashboardPage.jsx`)](#step-10--the-protected-dashboard-view-srcpagesdashboardpagejsx)
+  - [Step 11 — The Styling Configuration (`src/index.css`)](#step-11--the-styling-configuration-srcindexcss)
+  - [12. 🔁 Advanced: Implementing Frontend Refresh Tokens (Silent Refresh)](#12--advanced-implementing-frontend-refresh-tokens-silent-refresh)
+    - [Step 1 — Store and Revoke the Refresh Token in `AuthContext.jsx`](#step-1--store-and-revoke-the-refresh-token-in-authcontextjsx)
+    - [Step 2 — Silent Refresh Interceptor in `api.js`](#step-2--silent-refresh-interceptor-in-apijs)
+  - [13. 🧪 Testing with the Backend API](#13--testing-with-the-backend-api)
+  - [14. 🛠 Common Errors \& Fixes](#14--common-errors--fixes)
+  - [15. 📋 Completion Checklist](#15--completion-checklist)
 
 ---
 
@@ -1003,7 +1013,7 @@ api.interceptors.response.use(
           refreshToken,
         });
 
-        const newAccessToken = response.data.accessToken;
+        const newAccessToken = response.token;
         localStorage.setItem('token', newAccessToken);
 
         // Update headers & retry original request

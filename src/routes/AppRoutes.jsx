@@ -19,7 +19,7 @@ export default function AppRoutes() {
 
         {/* Protected Routes for Student */}
         <Route element={<ProtectedRoute allowedRoles={["student"]} />}>
-          <Route path="/student/dashboard" element={<StudentDashboardPage />} />
+          <Route path="/" element={<StudentDashboardPage />} />
         </Route>
 
         {/* Protected Routes for Instructor */}
@@ -34,7 +34,6 @@ export default function AppRoutes() {
         </Route>
 
         {/* Fallback routing */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </>
