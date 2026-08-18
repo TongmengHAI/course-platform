@@ -52,26 +52,27 @@ useEffect(() => {
 }, [id]);
 
 // Add rendering code inside details card:
-<div className="mt-12">
-  <Title level={4} className="font-bold text-slate-800 mb-4">Student Reviews</Title>
+{/* Add this inside the left column below the syllabus card */}
+<Card className="shadow-xs rounded-2xl border border-slate-100 p-6 bg-white mt-8">
+  <Title level={4} className="font-extrabold text-slate-800 m-0 mb-6">Student Reviews</Title>
   <List
     dataSource={reviews}
     itemLayout="horizontal"
     renderItem={item => (
-      <List.Item>
+      <List.Item className="border-b border-slate-100/60 py-4 last:border-none">
         <List.Item.Meta
-          title={<span className="font-bold text-slate-700">{item.user.username}</span>}
-          description={
-            <div>
-              <Rate disabled defaultValue={item.rating} className="text-sm text-yellow-500 mb-1" />
-              <p className="m-0 text-slate-600">{item.comment}</p>
+          title={
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-slate-700 text-sm">{item.user?.username || 'Student'}</span>
+              <Rate disabled defaultValue={item.rating} className="text-2xs text-amber-400" />
             </div>
           }
+          description={<p className="m-0 text-slate-500 text-xs mt-1 leading-relaxed">{item.comment}</p>}
         />
       </List.Item>
     )}
   />
-</div>
+</Card>
 ```
 
 ---
@@ -103,22 +104,22 @@ const handleAddReview = async (values) => {
   }
 };
 
-// Render below the reviews list:
+// Render inside the reviews Card under the List component:
 {user?.role === 'student' && (
-  <Card className="mt-8 bg-slate-50 border border-slate-100 rounded-xl p-2">
+  <div className="mt-8 pt-8 border-t border-slate-100">
     <Title level={5} className="m-0 font-bold text-slate-800 mb-4">Leave your Feedback</Title>
-    <Form form={form} onFinish={handleAddReview} layout="vertical">
-      <Form.Item name="rating" label="Rating" rules={[{ required: true, message: "Please select stars!" }]}>
-        <Rate />
+    <Form form={form} onFinish={handleAddReview} layout="vertical" requiredMark={false}>
+      <Form.Item name="rating" label={<span className="font-bold text-slate-600 text-xs">Rating</span>} rules={[{ required: true, message: "Please select stars!" }]}>
+        <Rate className="text-amber-400" />
       </Form.Item>
-      <Form.Item name="comment" label="Comment">
-        <Input.TextArea rows={3} placeholder="Write your review here..." />
+      <Form.Item name="comment" label={<span className="font-bold text-slate-600 text-xs">Comment</span>}>
+        <Input.TextArea rows={3} placeholder="Write your review here..." className="rounded-xl" />
       </Form.Item>
-      <Button type="primary" htmlType="submit" loading={submittingReview} className="bg-indigo-600 border-none rounded-lg font-semibold">
+      <Button type="primary" htmlType="submit" loading={submittingReview} className="bg-indigo-600 hover:bg-indigo-700 border-none font-bold rounded-xl h-10 px-5 shadow-xs cursor-pointer">
         Submit Feedback
       </Button>
     </Form>
-  </Card>
+  </div>
 )}
 ```
 

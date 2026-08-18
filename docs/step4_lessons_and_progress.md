@@ -62,7 +62,7 @@ This page features a split-pane layout:
 ```jsx
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Layout, Menu, Typography, Checkbox, Spin, Button, message, Card, Row, Col } from 'antd';
+import { Layout, Menu, Typography, Checkbox, Spin, Button, App, Card, Row, Col } from 'antd';
 import { ArrowLeftOutlined, CheckCircleFilled, PlayCircleOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
 import api from '../services/api';
 
@@ -72,6 +72,7 @@ const { Title, Paragraph } = Typography;
 export default function LessonViewerPage() {
   const { courseId, lessonId } = useParams();
   const navigate = useNavigate();
+  const { message } = App.useApp(); // ⬅️ Contextual message API
   
   const [loading, setLoading] = useState(true);
   const [syllabus, setSyllabus] = useState([]);
@@ -148,7 +149,7 @@ export default function LessonViewerPage() {
     }
   };
 
-  if (loading) return <div className="flex justify-center py-20"><Spin size="large" tip="Loading lesson..." /></div>;
+  if (loading) return <div className="flex justify-center py-20"><Spin size="large" /></div>;
 
   return (
     <Layout className="min-h-[85vh] bg-white text-left animate-fadeIn">
@@ -264,37 +265,51 @@ To show visual progress scores, we retrieve both the syllabus count and progress
 `src/pages/StudentDashboardPage.jsx`
 ```jsx
 // 1. Update your dynamic course card component mapping loop:
-// We read details and render progress tags:
+// We render the progress bar inside the polished course card layout:
 
 {courses.map((course) => {
-  // Mock percentage logic or query dynamically
   const progressPercent = course.completedCount && course.totalLessonsCount ? 
     Math.round((course.completedCount / course.totalLessonsCount) * 100) : 0;
 
   return (
     <Col xs={24} sm={12} lg={8} key={course.id}>
-      <Card className="shadow-xs rounded-xl border border-slate-100 flex flex-col h-full hover:shadow-md transition">
-        <Title level={5} className="m-0 font-bold text-slate-800">{course.title}</Title>
-        <Paragraph className="text-slate-500 text-xs mt-2 line-clamp-2">{course.description}</Paragraph>
-        
-        {/* Progress Bar Widget */}
-        <div className="mt-4 mb-2">
-          <div className="flex justify-between items-center text-2xs font-semibold text-slate-400 mb-1">
-            <span>LEARNING PROGRESS</span>
-            <span>{progressPercent}%</span>
-          </div>
-          <Progress percent={progressPercent} size="small" showInfo={false} strokeColor="#4f46e5" />
+      <Card 
+        hoverable
+        className="shadow-xs rounded-2xl border border-slate-100/80 overflow-hidden flex flex-col h-full bg-white transition hover-lift"
+        styles={{ body: { padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' } }}
+        onClick={() => navigate(`/courses/${course.id}`)}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <Tag color={getLevelTagColor(course.level)} className="font-semibold px-2 py-0.5 rounded-md border-none uppercase text-3xs">
+            {course.level}
+          </Tag>
+          <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">{course.category || 'Development'}</span>
         </div>
 
-        <div className="border-t border-slate-50 pt-3 mt-4 flex items-center justify-between">
-          <span className="text-xs text-slate-400">By {course.instructor?.username || 'Instructor'}</span>
+        <Title level={5} className="m-0 font-bold text-slate-800 line-clamp-1 mb-2">{course.title}</Title>
+        <Paragraph className="text-slate-500 text-xs leading-relaxed mt-1 flex-grow line-clamp-2 mb-4">{course.description}</Paragraph>
+        
+        {/* Modern Progress Bar Widget */}
+        <div className="mb-6 bg-slate-50 p-3 rounded-xl border border-slate-100/50">
+          <div className="flex justify-between items-center text-3xs font-bold text-slate-400 mb-1">
+            <span>CURRICULUM PROGRESS</span>
+            <span className="text-indigo-600">{progressPercent}%</span>
+          </div>
+          <Progress percent={progressPercent} size="small" showInfo={false} strokeColor="#4f46e5" trailColor="#e2e8f0" />
+        </div>
+
+        <div className="border-t border-slate-100 pt-4 mt-auto flex items-center justify-between">
+          <span className="text-xs text-slate-400">By <span className="font-semibold text-slate-600">{course.instructor?.username || 'Instructor'}</span></span>
           <Button 
-            type="primary" 
+            type="link" 
             size="small" 
-            onClick={() => navigate(`/student/courses/${course.id}/lessons/${course.firstLessonId}`)} 
-            className="bg-indigo-600 border-none rounded-md font-semibold text-xs cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation(); // Stop card click navigation
+              navigate(`/student/courses/${course.id}/lessons/${course.firstLessonId || 1}`);
+            }}
+            className="font-bold p-0"
           >
-            Start Learning
+            Start Learning →
           </Button>
         </div>
       </Card>

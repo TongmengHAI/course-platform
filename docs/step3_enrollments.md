@@ -30,7 +30,7 @@ Open `src/pages/CourseDetailPage.jsx`. We need to:
 ```jsx
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Button, Spin, Typography, Tag, Divider, Collapse, Row, Col, message } from 'antd';
+import { Card, Button, Spin, Typography, Tag, Divider, Collapse, Row, Col, App } from 'antd';
 import { ArrowLeftOutlined, PlayCircleOutlined, GlobalOutlined, FieldTimeOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext'; // ⬅️ Import useAuth
@@ -41,6 +41,7 @@ export default function CourseDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth(); // ⬅️ Get user state
+  const { message } = App.useApp(); // ⬅️ Contextual message API
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false); // ⬅️ Local loading state
@@ -79,7 +80,7 @@ export default function CourseDetailPage() {
     return 'warning';
   };
 
-  if (loading) return <div className="flex justify-center py-20"><Spin size="large" tip="Loading details..." /></div>;
+  if (loading) return <div className="flex justify-center py-20"><Spin size="large" /></div>;
   if (!course) return <div className="text-center py-20"><Text type="danger">Course not found</Text></div>;
 
   // Mock syllabus data for visual placeholder layout
@@ -299,7 +300,7 @@ export default function StudentDashboardPage() {
         <Title level={4} className="font-bold text-slate-800 mb-6 tracking-tight">My Learning List</Title>
 
         {loading ? (
-          <div className="flex justify-center py-10"><Spin size="large" tip="Loading your learning track..." /></div>
+          <div className="flex justify-center py-10"><Spin size="large" /></div>
         ) : (
           <Row gutter={[24, 24]}>
             {courses.length === 0 ? (
@@ -319,7 +320,7 @@ export default function StudentDashboardPage() {
                   <Card 
                     hoverable
                     className="shadow-xs rounded-2xl border border-slate-100/80 overflow-hidden flex flex-col h-full bg-white transition hover-lift"
-                    bodyStyle={{ padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}
+                    styles={{ body: { padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' } }}
                     onClick={() => navigate(`/courses/${course.id}`)}
                   >
                     <div className="flex items-center justify-between mb-4">
@@ -480,7 +481,7 @@ export default function InstructorDashboardPage() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-20"><Spin size="large" tip="Loading administrative dashboard..." /></div>
+          <div className="flex justify-center py-20"><Spin size="large" /></div>
         ) : (
           <Card className="shadow-xs border border-slate-100/80 rounded-2xl overflow-hidden p-0 bg-white">
             <Table

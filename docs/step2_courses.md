@@ -175,7 +175,6 @@ export default function CourseCatalogPage() {
               allowClear
               onChange={setLevel}
               className="w-full sm:w-48 h-10"
-              dropdownStyle={{ borderRadius: '12px' }}
             >
               <Option value="Beginner">Beginner</Option>
               <Option value="Intermediate">Intermediate</Option>
@@ -185,7 +184,7 @@ export default function CourseCatalogPage() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-20"><Spin size="large" tip="Loading catalog..." /></div>
+          <div className="flex justify-center py-20"><Spin size="large" /></div>
         ) : (
           <Row gutter={[24, 24]}>
             {courses.length === 0 ? (
@@ -202,7 +201,7 @@ export default function CourseCatalogPage() {
                   <Card
                     hoverable
                     className="shadow-xs rounded-2xl border border-slate-100/80 overflow-hidden hover-lift flex flex-col h-full bg-white relative"
-                    bodyStyle={{ padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}
+                    styles={{ body: { padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' } }}
                     onClick={() => navigate(`/courses/${course.id}`)}
                   >
                     <div className="flex items-center justify-between mb-4">
@@ -257,7 +256,7 @@ This fetches data for a single course via route ID parameters (`GET /courses/:id
 ```jsx
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Button, Spin, Typography, Tag, Divider, Collapse } from 'antd';
+import { Card, Button, Spin, Typography, Tag, Divider, Collapse, Row, Col } from 'antd';
 import { ArrowLeftOutlined, PlayCircleOutlined, GlobalOutlined, FieldTimeOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import api from '../services/api';
 
@@ -289,7 +288,7 @@ export default function CourseDetailPage() {
     return 'warning';
   };
 
-  if (loading) return <div className="flex justify-center py-20"><Spin size="large" tip="Loading details..." /></div>;
+  if (loading) return <div className="flex justify-center py-20"><Spin size="large" /></div>;
   if (!course) return <div className="text-center py-20"><Text type="danger">Course not found</Text></div>;
 
   // Mock syllabus data for visual placeholder layout
@@ -466,13 +465,17 @@ export default function CourseEditorPage() {
 
   return (
     <div className="min-h-[85vh] bg-slate-50/50 py-10 px-6 md:px-12 text-left">
-      <div className="max-w-2xl mx-auto">
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/instructor/dashboard')} className="mb-6 rounded-lg font-semibold">
+      <div className="max-w-2xl mx-auto animate-fadeIn">
+        <Button 
+          icon={<ArrowLeftOutlined />} 
+          onClick={() => navigate('/instructor/dashboard')} 
+          className="mb-6 rounded-xl font-bold h-10 border-slate-200 text-slate-600 cursor-pointer"
+        >
           Back to Dashboard
         </Button>
 
-        <Card className="shadow-xs rounded-2xl border border-slate-100 p-4">
-          <Title level={3} className="font-bold text-slate-800 mt-0 mb-6">
+        <Card className="shadow-xs rounded-2xl border border-slate-100/80 p-6 md:p-8 bg-white">
+          <Title level={3} className="font-extrabold text-slate-800 tracking-tight mt-0 mb-6">
             {isEditMode ? "Edit Course Information" : "Create New Course"}
           </Title>
 
@@ -485,52 +488,59 @@ export default function CourseEditorPage() {
           >
             <Form.Item
               name="title"
-              label={<span className="font-semibold text-slate-600">Course Title</span>}
+              label={<span className="font-bold text-slate-700 text-xs">Course Title</span>}
               rules={[{ required: true, message: "Please enter the course title!" }]}
             >
-              <Input placeholder="e.g., Introduction to React & Tailwind" />
+              <Input placeholder="e.g., Introduction to React & Tailwind" className="rounded-xl" />
             </Form.Item>
 
             <Form.Item
               name="description"
-              label={<span className="font-semibold text-slate-600">Course Description</span>}
+              label={<span className="font-bold text-slate-700 text-xs">Course Description</span>}
               rules={[{ required: true, message: "Please enter the course description!" }]}
             >
-              <Input.TextArea rows={5} placeholder="Describe the topics covered and syllabus modules..." />
+              <Input.TextArea rows={5} placeholder="Describe the topics covered and syllabus modules..." className="rounded-xl" />
             </Form.Item>
 
-            <Form.Item
-              name="category"
-              label={<span className="font-semibold text-slate-600">Category</span>}
-              rules={[{ required: true, message: "Please select a category!" }]}
-            >
-              <Select placeholder="Choose field category">
-                <Option value="Programming">Programming</Option>
-                <Option value="Design">Design</Option>
-                <Option value="Marketing">Marketing</Option>
-                <Option value="Business">Business</Option>
-              </Select>
-            </Form.Item>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Form.Item
+                name="category"
+                label={<span className="font-bold text-slate-700 text-xs">Category</span>}
+                rules={[{ required: true, message: "Please select a category!" }]}
+              >
+                <Select placeholder="Choose field category">
+                  <Option value="Programming">Programming</Option>
+                  <Option value="Design">Design</Option>
+                  <Option value="Marketing">Marketing</Option>
+                  <Option value="Business">Business</Option>
+                </Select>
+              </Form.Item>
 
-            <Form.Item
-              name="level"
-              label={<span className="font-semibold text-slate-600">Course Difficulty Level</span>}
-              rules={[{ required: true, message: "Please select a difficulty level!" }]}
-            >
-              <Select placeholder="Choose target level">
-                <Option value="Beginner">Beginner</Option>
-                <Option value="Intermediate">Intermediate</Option>
-                <Option value="Advanced">Advanced</Option>
-              </Select>
-            </Form.Item>
+              <Form.Item
+                name="level"
+                label={<span className="font-bold text-slate-700 text-xs">Difficulty Level</span>}
+                rules={[{ required: true, message: "Please select a difficulty level!" }]}
+              >
+                <Select placeholder="Choose target level">
+                  <Option value="Beginner">Beginner</Option>
+                  <Option value="Intermediate">Intermediate</Option>
+                  <Option value="Advanced">Advanced</Option>
+                </Select>
+              </Form.Item>
+            </div>
 
             <Form.Item
               name="price"
-              label={<span className="font-semibold text-slate-600">Price (USD)</span>}
+              label={<span className="font-bold text-slate-700 text-xs">Price (USD)</span>}
               rules={[{ required: true, message: "Please enter a course fee!" }]}
               initialValue={0}
             >
-              <InputNumber min={0} className="w-full" formatter={value => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} parser={value => value.replace(/\$\s?|(,*)/g, '')} />
+              <InputNumber 
+                min={0} 
+                className="w-full rounded-xl" 
+                formatter={value => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} 
+                parser={value => value.replace(/\$\s?|(,*)/g, '')} 
+              />
             </Form.Item>
 
             <Form.Item className="mt-8 mb-2">
@@ -540,7 +550,7 @@ export default function CourseEditorPage() {
                 loading={submitting}
                 icon={<SaveOutlined />}
                 block
-                className="bg-indigo-600 hover:bg-indigo-700 border-none h-12 text-base rounded-xl cursor-pointer"
+                className="bg-indigo-600 hover:bg-indigo-700 border-none font-bold rounded-xl h-11 cursor-pointer shadow-xs"
               >
                 Save Course Details
               </Button>
@@ -551,6 +561,7 @@ export default function CourseEditorPage() {
     </div>
   );
 }
+```
 ```
 
 ---

@@ -254,7 +254,7 @@ export const useAuth = () => useContext(AuthContext);
 
 ```jsx
 import React from 'react';
-import { Card, Form, Input, Select, Button, Typography, message } from 'antd';
+import { Card, Form, Input, Select, Button, Typography, App } from 'antd';
 import { UserOutlined, PhoneOutlined, LockOutlined, UserAddOutlined, BookOutlined } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -265,6 +265,7 @@ const { Option } = Select;
 export default function RegisterPage() {
   const { register, loading } = useAuth();
   const navigate = useNavigate();
+  const { message } = App.useApp(); // ⬅️ Use contextual message API
 
   const onFinish = async (values) => {
     try {
@@ -365,7 +366,7 @@ export default function RegisterPage() {
 
 ```jsx
 import React from 'react';
-import { Card, Form, Input, Button, Typography, message } from 'antd';
+import { Card, Form, Input, Button, Typography, App } from 'antd';
 import { PhoneOutlined, LockOutlined, LoginOutlined, BookOutlined } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -375,6 +376,7 @@ const { Title, Text } = Typography;
 export default function LoginPage() {
   const { login, loading } = useAuth();
   const navigate = useNavigate();
+  const { message } = App.useApp(); // ⬅️ Use contextual message API
 
   const onFinish = async (values) => {
     try {
@@ -652,7 +654,7 @@ export default function AppRoutes() {
 ```jsx
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, App as AntdApp } from 'antd'; // ⬅️ Import App as AntdApp
 import { AuthProvider } from './context/AuthContext';
 import AppRoutes from './routes/AppRoutes';
 
@@ -679,11 +681,13 @@ export default function App() {
         },
       }}
     >
-      <BrowserRouter>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </BrowserRouter>
+      <AntdApp> {/* ⬅️ Wrap with AntdApp to allow context-based notifications/messages */}
+        <BrowserRouter>
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </BrowserRouter>
+      </AntdApp>
     </ConfigProvider>
   );
 }
