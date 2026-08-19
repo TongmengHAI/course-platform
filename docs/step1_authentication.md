@@ -652,11 +652,23 @@ export default function AppRoutes() {
 `src/App.jsx`
 
 ```jsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { ConfigProvider, App as AntdApp } from 'antd'; // ⬅️ Import App as AntdApp
 import { AuthProvider } from './context/AuthContext';
 import AppRoutes from './routes/AppRoutes';
+import { registerMessageInstance } from './services/api'; // ⬅️ Import register helper
+
+function AppContent() {
+  const { message } = AntdApp.useApp();
+
+  useEffect(() => {
+    // Register the dynamic context-aware message helper with axios interceptors
+    registerMessageInstance(message);
+  }, [message]);
+
+  return <AppRoutes />;
+}
 
 export default function App() {
   return (
@@ -684,7 +696,7 @@ export default function App() {
       <AntdApp> {/* ⬅️ Wrap with AntdApp to allow context-based notifications/messages */}
         <BrowserRouter>
           <AuthProvider>
-            <AppRoutes />
+            <AppContent />
           </AuthProvider>
         </BrowserRouter>
       </AntdApp>
@@ -932,7 +944,21 @@ Replace the response interceptor in `src/services/api.js` with the following:
 
 ```javascript
 import axios from 'axios';
-import { message } from 'antd';
+
+let messageInstance = null;
+
+// Dynamically registers the theme-aware message instance from App component
+export const registerMessageInstance = (msg) => {
+  messageInstance = msg;
+};
+
+const showError = (msg) => {
+  if (messageInstance) {
+    messageInstance.error(msg);
+  } else {
+    console.error(msg);
+  }
+};
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
@@ -1004,7 +1030,7 @@ api.interceptors.response.use(
       const refreshToken = localStorage.getItem('refreshToken');
       if (!refreshToken) {
         // No refresh token available, must log in again
-        message.error('Session expired. Please login again.');
+        showError('Session expired. Please login again.');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         window.location.href = '/login';
@@ -1028,7 +1054,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         // Refresh token is invalid/expired, clean up and redirect
         processQueue(refreshError, null);
-        message.error('Session expired. Please login again.');
+        showError('Session expired. Please login again.');
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
@@ -1040,9 +1066,9 @@ api.interceptors.response.use(
     }
 
     if (status === 403) {
-      message.error('Forbidden: You do not have permission.');
+      showError('Forbidden: You do not have permission.');
     } else if (status !== 401) {
-      message.error(errMsg);
+      showError(errMsg);
     }
 
     return Promise.reject(error);
