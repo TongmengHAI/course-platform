@@ -1017,7 +1017,7 @@ api.interceptors.response.use(
           refreshToken,
         });
 
-        const newAccessToken = response.token;
+        const newAccessToken = response.data.token;
         localStorage.setItem('token', newAccessToken);
 
         // Update headers & retry original request
