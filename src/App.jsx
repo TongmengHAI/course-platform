@@ -1,8 +1,20 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { ConfigProvider, App as AntdApp } from "antd"; // ⬅️ Import App
 import { AuthProvider } from "./context/AuthContext";
 import AppRoutes from "./routes/AppRoutes";
+import { registerMessageInstance } from "./services/api"; // ⬅️ Import register helper
+
+function AppContent() {
+  const { message } = AntdApp.useApp();
+
+  useEffect(() => {
+    // Register the dynamic context-aware message helper with axios interceptors
+    registerMessageInstance(message);
+  }, [message]);
+
+  return <AppRoutes />;
+}
 
 function App() {
   return (
@@ -30,7 +42,7 @@ function App() {
       <AntdApp> {/* ⬅️ Wrap with AntdApp for contextual notifications */}
         <BrowserRouter>
           <AuthProvider>
-            <AppRoutes />
+            <AppContent />
           </AuthProvider>
         </BrowserRouter>
       </AntdApp>
