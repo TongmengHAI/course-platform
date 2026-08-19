@@ -3,7 +3,7 @@
 A step-by-step guide for integrating the Enrollment API trigger and updating Student and Instructor dashboards in the **Online Course Platform** frontend.
 
 > **Stack:** React 19 · Ant Design (`antd`) · Axios
-> **You will update:** `CourseDetailPage.jsx` (Enrollment button), `StudentDashboardPage.jsx` (learning list), and `InstructorDashboardPage.jsx` (owned courses catalog table).
+> **You will update:** `CourseDetailPage.jsx` (Enrollment button) and `StudentDashboardPage.jsx` (learning list).
 > **You will learn:** Fetching associated relationship data, rendering lists, binding API mutation actions to UI clicks, and handling empty states.
 
 ---
@@ -12,12 +12,9 @@ A step-by-step guide for integrating the Enrollment API trigger and updating Stu
 
 1. [Part A — Adding "Enroll Now" to the Course Detail Page](#part-a---adding-enroll-now-to-the-course-detail-page)
 2. [Part B — Loading Enrolled Courses on Student Dashboard](#part-b---loading-enrolled-courses-on-student-dashboard)
-3. [Part C — Listing Owned Courses on Instructor Dashboard](#part-c---listing-owned-courses-on-instructor-dashboard)
-4. [Testing the Enrollment UI Flow](#testing-the-enrollment-ui-flow)
-5. [Common Errors & Fixes](#common-errors--fixes)
-6. [Completion Checklist](#completion-checklist)
-
----
+3. [Testing the Enrollment UI Flow](#testing-the-enrollment-ui-flow)
+4. [Common Errors & Fixes](#common-errors--fixes)
+5. [Completion Checklist](#completion-checklist)
 
 ## Part A — Adding "Enroll Now" to the Course Detail Page
 
@@ -347,157 +344,6 @@ export default function StudentDashboardPage() {
     </div>
   );
 }
-```
-```
-
----
-
-## Part C — Listing Owned Courses on Instructor Dashboard
-
-Modify the Instructor Dashboard page to load courses created by this instructor using the URL query parameter `?instructorId=X` and render them in a clean Ant Design table with edit routes.
-
-`src/pages/InstructorDashboardPage.jsx`
-```jsx
-import React, { useEffect, useState } from 'react';
-import { Card, Typography, Button, Row, Col, Avatar, Table, Space, Spin, Tag } from 'antd';
-import { UserOutlined, PlusOutlined, EditOutlined, LogoutOutlined, BookOutlined } from '@ant-design/icons';
-import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
-
-const { Title, Paragraph, Text } = Typography;
-
-export default function InstructorDashboardPage() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const [courses, setCourses] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchCreatedCourses = async () => {
-      try {
-        const response = await api.get('/courses', { params: { instructorId: user?.id } });
-        setCourses(response.data || []);
-      } catch (err) {
-        console.error("Error loading owned courses:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (user?.id) fetchCreatedCourses();
-  }, [user]);
-
-  const getLevelTagColor = (lvl) => {
-    if (lvl === 'Beginner') return 'success';
-    if (lvl === 'Intermediate') return 'processing';
-    return 'warning';
-  };
-
-  const columns = [
-    {
-      title: 'Course Title',
-      dataIndex: 'title',
-      key: 'title',
-      render: (text) => <span className="font-bold text-slate-800 text-sm">{text}</span>,
-    },
-    {
-      title: 'Category',
-      dataIndex: 'category',
-      key: 'category',
-      render: (text) => <span className="text-slate-500 font-medium text-xs">{text || 'N/A'}</span>,
-    },
-    {
-      title: 'Level',
-      dataIndex: 'level',
-      key: 'level',
-      render: (level) => (
-        <Tag color={getLevelTagColor(level)} className="font-semibold uppercase text-3xs border-none rounded-md px-2 py-0.5 m-0">
-          {level || 'All Levels'}
-        </Tag>
-      ),
-    },
-    {
-      title: 'Price',
-      dataIndex: 'price',
-      key: 'price',
-      render: (val) => <span className="font-bold text-slate-700 text-sm">${val || 0}</span>,
-    },
-    {
-      title: 'Action',
-      key: 'action',
-      render: (_, record) => (
-        <Space size="middle">
-          <Button 
-            type="default"
-            icon={<EditOutlined className="text-indigo-600" />} 
-            onClick={() => navigate(`/instructor/courses/edit/${record.id}`)} 
-            className="rounded-xl font-bold text-xs flex items-center h-8 cursor-pointer border-slate-200"
-          >
-            Edit
-          </Button>
-        </Space>
-      ),
-    },
-  ];
-
-  return (
-    <div className="min-h-[85vh] bg-slate-50/50 py-10 px-6 md:px-12 text-left">
-      <div className="max-w-6xl mx-auto animate-fadeIn">
-        
-        {/* Modern Welcome Banner */}
-        <div className="bg-gradient-to-r from-indigo-600 to-indigo-900 text-white rounded-3xl p-6 md:p-8 mb-8 relative overflow-hidden shadow-md flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent pointer-events-none" />
-          <div className="flex items-center gap-4 z-10">
-            <Avatar size={64} icon={<UserOutlined />} className="bg-white/20 border border-white/30 text-white shadow-sm" />
-            <div>
-              <Title level={3} className="m-0 text-white font-extrabold tracking-tight" style={{ color: 'white' }}>
-                Welcome back, {user?.username}!
-              </Title>
-              <Text className="text-indigo-200 text-xs block mt-1">Manage and edit your course curricula tracks.</Text>
-            </div>
-          </div>
-          <Button 
-            type="default" 
-            icon={<LogoutOutlined />} 
-            onClick={() => { logout(); navigate('/login'); }} 
-            className="bg-white/10 hover:bg-white/20 text-white border-white/20 rounded-xl font-semibold h-10 px-5 cursor-pointer z-10"
-            style={{ color: 'white' }}
-          >
-            Sign Out
-          </Button>
-        </div>
-
-        {/* Action Toolbar */}
-        <div className="flex justify-between items-center mb-6">
-          <Title level={4} className="font-bold text-slate-800 m-0 tracking-tight">Course Administration</Title>
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />} 
-            onClick={() => navigate('/instructor/courses/new')} 
-            className="bg-indigo-600 hover:bg-indigo-700 border-none font-bold rounded-xl px-4 h-10 cursor-pointer flex items-center shadow-xs"
-          >
-            New Course
-          </Button>
-        </div>
-
-        {loading ? (
-          <div className="flex justify-center py-20"><Spin size="large" /></div>
-        ) : (
-          <Card className="shadow-xs border border-slate-100/80 rounded-2xl overflow-hidden p-0 bg-white">
-            <Table
-              dataSource={courses}
-              columns={columns}
-              rowKey="id"
-              pagination={{ pageSize: 5 }}
-              className="border-none"
-            />
-          </Card>
-        )}
-      </div>
-    </div>
-  );
-}
-```
 ```
 
 ---
