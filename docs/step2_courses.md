@@ -5,19 +5,31 @@ A step-by-step guide for building the Course Catalog, Detail Page, and Creator/E
 > **Stack:** React 19 · Ant Design (`antd`) · Axios · React Router DOM
 > **You will build:** `CourseCatalogPage.jsx`, `CourseDetailPage.jsx`, `CourseEditorPage.jsx` and configure their routes.
 > **You will learn:** Fetching listings from APIs, applying search queries and filters, using React Router path parameters, and building Ant Design Forms.
+## 👥 Access Matrix & Roles
+
+Here is a breakdown of what each user role is permitted to perform in the course management flow:
+
+| Role | Browse Catalog (`/courses`) | View Detail (`/courses/:id`) | Create Course | Edit Course | UI Page Views |
+|---|:---:|:---:|:---:|:---:|---|
+| **Guest (Unauthenticated)** | ❌ | ❌ | ❌ | ❌ | Redirected to `/login` |
+| **Student** | ✅ | ✅ | ❌ | ❌ | `CourseCatalogPage`, `CourseDetailPage` |
+| **Instructor** | ✅ | ✅ | ✅ (Own) | ✅ (Own) | All catalog views + `CourseEditorPage` |
+| **Admin** | ✅ | ✅ | ✅ (All) | ✅ (All) | All catalog views + `CourseEditorPage` |
+
+> [!NOTE]
+> Instructors are authorized to create and manage their own courses on the database level, while Admins have permission to manage all courses globally.
 
 ---
 
 ## 📚 Table of Contents
 
-1. [Part A — Setting Up Routes & Navigation](#part-a---setting-up-routes--navigation)
-2. [Part B — Building the Course Catalog Page](#part-b---building-the-course-catalog-page)
-3. [Part C — Building the Course Detail Page](#part-c---building-the-course-detail-page)
-4. [Part D — Building the Course Editor Page (Create & Edit)](#part-d---building-the-course-editor-page-create--edit)
-5. [Common Errors & Fixes](#common-errors--fixes)
-6. [Completion Checklist](#completion-checklist)
-
----
+1. [Access Matrix & Roles](#-access-matrix--roles)
+2. [Part A — Setting Up Routes & Navigation](#part-a---setting-up-routes--navigation)
+3. [Part B — Building the Course Catalog Page](#part-b---building-the-course-catalog-page)
+4. [Part C — Building the Course Detail Page](#part-c---building-the-course-detail-page)
+5. [Part D — Building the Course Editor Page (Create & Edit)](#part-d---building-the-course-editor-page-create--edit)
+6. [Common Errors & Fixes](#common-errors--fixes)
+7. [Completion Checklist](#completion-checklist)
 
 ## Part A — Setting Up Routes & Navigation
 
