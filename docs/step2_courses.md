@@ -88,16 +88,28 @@ export default function AppRoutes() {
 ```
 
 ### Step A.2 — Integrate Catalog link in `Navbar.jsx`
-Add a "Browse Courses" tab in the navbar visible to all authenticated accounts.
+Update the Logo brand link to direct authenticated users to the courses page, and add a "Browse Courses" tab in the navbar.
 
 `src/components/Navbar.jsx`
 ```jsx
-// Add adjacent to your logo brand inside Navbar.jsx return statement:
-{isAuthenticated && (
-  <Link to="/courses" className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition ml-8">
-    Browse Courses
-  </Link>
-)}
+// Open src/components/Navbar.jsx and update the logo link destination and add "Browse Courses":
+return (
+  <Header className="bg-white/85 backdrop-blur-md sticky top-0 z-50 px-6 md:px-12 flex justify-between items-center shadow-xs border-b border-slate-100 h-16 w-full">
+    {/* 1. Direct logged-in users to catalog instead of login */}
+    <Link to={isAuthenticated ? "/courses" : "/login"} className="text-xl font-bold text-indigo-600 flex items-center gap-2 tracking-tight">
+      <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600">
+        <BookOutlined />
+      </div>
+      <span className="font-heading font-extrabold text-slate-800 text-lg">CoursePlatform</span>
+    </Link>
+
+    <div>
+      {/* 2. Show navigation tab when logged in */}
+      {isAuthenticated && (
+        <Link to="/courses" className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition ml-8">
+          Browse Courses
+        </Link>
+      )}
 ```
 
 ---
@@ -603,7 +615,13 @@ export default function InstructorDashboardPage() {
   useEffect(() => {
     const fetchCreatedCourses = async () => {
       try {
-        const response = await api.get('/courses', { params: { instructorId: user?.id } });
+        // Admins can manage all courses globally; Instructors manage only their own
+        const params = {};
+        if (user?.role !== 'admin' && user?.id) {
+          params.instructorId = user.id;
+        }
+
+        const response = await api.get('/courses', { params });
         setCourses(response.data || []);
       } catch (err) {
         console.error("Error loading owned courses:", err);
@@ -680,7 +698,7 @@ export default function InstructorDashboardPage() {
               <Title level={3} className="m-0 text-white font-extrabold tracking-tight" style={{ color: 'white' }}>
                 Welcome back, {user?.username}!
               </Title>
-              <Text className="text-indigo-200 text-xs block mt-1">Manage and edit your course curricula tracks.</Text>
+              <Text className="text-indigo-200 text-xs block mt-1">{user?.role === 'admin' ? "Manage and edit all platform course curricula tracks (Admin mode)." : "Manage and edit your course curricula tracks."}</Text>
             </div>
           </div>
           <Button 
