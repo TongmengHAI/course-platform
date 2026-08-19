@@ -910,16 +910,23 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const fetchAdminData = async () => {
       try {
-        // Fetch all courses globally
-        const response = await api.get('/courses');
-        const courseList = response.data || [];
+        // 1. Fetch courses globally
+        const coursesResponse = await api.get('/courses', { params: { limit: 100 } });
+        const courseList = coursesResponse.data || [];
         setCourses(courseList);
 
-        // Simulated platform metrics for display in the dashboard
+        // 2. Fetch real student count
+        const studentsResponse = await api.get('/users', { params: { role: 'student', limit: 1 } });
+        const studentCount = studentsResponse.pagination?.total || studentsResponse.data?.length || 0;
+
+        // 3. Fetch real instructor count
+        const instructorsResponse = await api.get('/users', { params: { role: 'instructor', limit: 1 } });
+        const instructorCount = instructorsResponse.pagination?.total || instructorsResponse.data?.length || 0;
+
         setStats({
-          totalCourses: courseList.length,
-          totalStudents: 124,
-          totalInstructors: 8
+          totalCourses: coursesResponse.pagination?.total || courseList.length,
+          totalStudents: studentCount,
+          totalInstructors: instructorCount
         });
       } catch (err) {
         console.error("Error loading admin dashboard data:", err);
