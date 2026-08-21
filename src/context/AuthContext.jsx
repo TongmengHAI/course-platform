@@ -20,8 +20,10 @@ export const AuthProvider = ({ children }) => {
       // Backend response shape: { message: "...", data: { id, username, phone, role }, token: "..." }
       const token = response.token;
       const authenticatedUser = response.data;
+      const refreshToken = response.refreshToken;
       
       localStorage.setItem('token', token);
+      localStorage.setItem('refreshToken', refreshToken);
       localStorage.setItem('user', JSON.stringify(authenticatedUser));
       
       setUser(authenticatedUser);
@@ -43,8 +45,20 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Logout handler
-  const logout = () => {
+  const logout = async () => {
+
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (refreshToken) {
+      try {
+        // Invalidate the token on the backend
+        await api.post('/auth/logout', { refreshToken });
+      } catch (err) {
+        console.error("Logout request failed:", err);
+      }
+    }
+
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     setUser(null);
   };

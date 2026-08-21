@@ -45,12 +45,22 @@ export default function Navbar() {
 
   return (
     <Header className="bg-white/85 backdrop-blur-md sticky top-0 z-50 px-6 md:px-12 flex justify-between items-center shadow-xs border-b border-slate-100 h-16 w-full">
-      <Link to="/" className="text-xl font-bold text-indigo-600 flex items-center gap-2 tracking-tight">
-        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600">
-          <BookOutlined />
-        </div>
-        <span className="font-heading font-extrabold text-slate-800 text-lg">CoursePlatform</span>
-      </Link>
+      <div className="flex items-center gap-6">
+        {/* Logo link now routes to catalog when logged in, otherwise login page */}
+        <Link to={isAuthenticated ? "/courses" : "/login"} className="text-xl font-bold text-indigo-600 flex items-center gap-2 tracking-tight">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600">
+            <BookOutlined />
+          </div>
+          <span className="font-heading font-extrabold text-slate-800 text-lg">CoursePlatform</span>
+        </Link>
+
+        {/* Browse courses menu link only visible when logged in */}
+        {isAuthenticated && (
+          <Link to="/courses" className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition ml-2">
+            Browse Courses
+          </Link>
+        )}
+      </div>
 
       <div>
         {isAuthenticated ? (

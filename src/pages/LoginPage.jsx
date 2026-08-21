@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Form, Input, Button, Typography, message } from 'antd';
+import { Card, Form, Input, Button, Typography, App } from 'antd';
 import { PhoneOutlined, LockOutlined, LoginOutlined, BookOutlined } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -9,6 +9,7 @@ const { Title, Text } = Typography;
 export default function LoginPage() {
   const { login, loading } = useAuth();
   const navigate = useNavigate();
+  const { message } = App.useApp(); // ⬅️ Contextual message API
 
   const onFinish = async (values) => {
     try {

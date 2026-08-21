@@ -10,19 +10,29 @@ A step-by-step guide for building the client-side authentication system for the 
 
 ## 📚 Table of Contents
 
-1. [What is Frontend Authentication?](#1-what-is-frontend-authentication)
-2. [The Big Picture (Client Request & Token Flow)](#2-the-big-picture-client-request--token-flow)
-3. [Project Architecture](#3-project-architecture)
-4. [Prerequisites & Setup](#4-prerequisites--setup)
-5. [Step 1 — The Axios HTTP Service (Token Interceptor)](#step-1--the-axios-http-service-token-interceptor)
-6. [Step 2 — The Auth Context & Provider (`AuthContext.jsx`)](#step-2--the-auth-context--provider-authcontextjsx)
-7. [Step 3 — The Register Page (Ant Design Form)](#step-3--the-register-page-ant-design-form)
-8. [Step 4 — The Login Page (Ant Design Form)](#step-4--the-login-page-ant-design-form)
-9. [Step 5 — Protected Routes & Role Guards](#step-5--protected-routes--role-guards)
-10. [Step 6 — User Navigation Dropdown (Header Avatar)](#step-6--user-navigation-dropdown-header-avatar)
-11. [Testing with the Backend API](#11-testing-with-the-backend-api)
-12. [Common Errors & Fixes](#12-common-errors--fixes)
-13. [Completion Checklist](#13-completion-checklist)
+- [🔐 Frontend Authentication — Zero to Completed (React + Ant Design)](#-frontend-authentication--zero-to-completed-react--ant-design)
+  - [📚 Table of Contents](#-table-of-contents)
+  - [1. What is Frontend Authentication?](#1-what-is-frontend-authentication)
+  - [2. 🔄 The Big Picture (Client Request \& Token Flow)](#2--the-big-picture-client-request--token-flow)
+  - [3. 🏗 Project Architecture](#3--project-architecture)
+  - [4. ⚙ Prerequisites \& Setup](#4--prerequisites--setup)
+  - [Step 1 — The Axios HTTP Service (`src/services/api.js`)](#step-1--the-axios-http-service-srcservicesapijs)
+  - [Step 2 — The Auth Context \& Provider (`src/context/AuthContext.jsx`)](#step-2--the-auth-context--provider-srccontextauthcontextjsx)
+  - [Step 3 — The Register Page (`src/pages/RegisterPage.jsx`)](#step-3--the-register-page-srcpagesregisterpagejsx)
+  - [Step 4 — The Login Page (`src/pages/LoginPage.jsx`)](#step-4--the-login-page-srcpagesloginpagejsx)
+  - [Step 5 — Protected Routes \& Role Guards (`src/components/ProtectedRoute.jsx`)](#step-5--protected-routes--role-guards-srccomponentsprotectedroutejsx)
+  - [Step 6 — User Navigation Dropdown (`src/components/Navbar.jsx`)](#step-6--user-navigation-dropdown-srccomponentsnavbarjsx)
+  - [Step 7 — The Application Router (`src/routes/AppRoutes.jsx`)](#step-7--the-application-router-srcroutesapproutesjsx)
+  - [Step 8 — The Root Component with Theme Config (`src/App.jsx`)](#step-8--the-root-component-with-theme-config-srcappjsx)
+  - [Step 9 — The App Entry Point (`src/main.jsx`)](#step-9--the-app-entry-point-srcmainjsx)
+  - [Step 10 — The Protected Dashboard View (`src/pages/DashboardPage.jsx`)](#step-10--the-protected-dashboard-view-srcpagesdashboardpagejsx)
+  - [Step 11 — The Styling Configuration (`src/index.css`)](#step-11--the-styling-configuration-srcindexcss)
+  - [12. 🔁 Advanced: Implementing Frontend Refresh Tokens (Silent Refresh)](#12--advanced-implementing-frontend-refresh-tokens-silent-refresh)
+    - [Step 1 — Store and Revoke the Refresh Token in `AuthContext.jsx`](#step-1--store-and-revoke-the-refresh-token-in-authcontextjsx)
+    - [Step 2 — Silent Refresh Interceptor in `api.js`](#step-2--silent-refresh-interceptor-in-apijs)
+  - [13. 🧪 Testing with the Backend API](#13--testing-with-the-backend-api)
+  - [14. 🛠 Common Errors \& Fixes](#14--common-errors--fixes)
+  - [15. 📋 Completion Checklist](#15--completion-checklist)
 
 ---
 
@@ -244,7 +254,7 @@ export const useAuth = () => useContext(AuthContext);
 
 ```jsx
 import React from 'react';
-import { Card, Form, Input, Select, Button, Typography, message } from 'antd';
+import { Card, Form, Input, Select, Button, Typography, App } from 'antd';
 import { UserOutlined, PhoneOutlined, LockOutlined, UserAddOutlined, BookOutlined } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -255,6 +265,7 @@ const { Option } = Select;
 export default function RegisterPage() {
   const { register, loading } = useAuth();
   const navigate = useNavigate();
+  const { message } = App.useApp(); // ⬅️ Use contextual message API
 
   const onFinish = async (values) => {
     try {
@@ -302,7 +313,7 @@ export default function RegisterPage() {
             label={<span className="font-semibold text-slate-600">Phone Number</span>}
             rules={[{ required: true, message: 'Please enter your phone number!' }]}
           >
-            <Input prefix={<PhoneOutlined className="text-slate-400" />} placeholder="0123456789" />
+            <Input prefix={<PhoneOutlined className="text-slate-400" />} placeholder="096123456" />
           </Form.Item>
 
           <Form.Item
@@ -355,7 +366,7 @@ export default function RegisterPage() {
 
 ```jsx
 import React from 'react';
-import { Card, Form, Input, Button, Typography, message } from 'antd';
+import { Card, Form, Input, Button, Typography, App } from 'antd';
 import { PhoneOutlined, LockOutlined, LoginOutlined, BookOutlined } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -365,6 +376,7 @@ const { Title, Text } = Typography;
 export default function LoginPage() {
   const { login, loading } = useAuth();
   const navigate = useNavigate();
+  const { message } = App.useApp(); // ⬅️ Use contextual message API
 
   const onFinish = async (values) => {
     try {
@@ -550,7 +562,7 @@ export default function Navbar() {
 
   return (
     <Header className="bg-white/85 backdrop-blur-md sticky top-0 z-50 px-6 md:px-12 flex justify-between items-center shadow-xs border-b border-slate-100 h-16 w-full">
-      <Link to="/" className="text-xl font-bold text-indigo-600 flex items-center gap-2 tracking-tight">
+      <Link to={isAuthenticated ? "/courses" : "/login"} className="text-xl font-bold text-indigo-600 flex items-center gap-2 tracking-tight">
         <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600">
           <BookOutlined />
         </div>
@@ -640,11 +652,23 @@ export default function AppRoutes() {
 `src/App.jsx`
 
 ```jsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, App as AntdApp } from 'antd'; // ⬅️ Import App as AntdApp
 import { AuthProvider } from './context/AuthContext';
 import AppRoutes from './routes/AppRoutes';
+import { registerMessageInstance } from './services/api'; // ⬅️ Import register helper
+
+function AppContent() {
+  const { message } = AntdApp.useApp();
+
+  useEffect(() => {
+    // Register the dynamic context-aware message helper with axios interceptors
+    registerMessageInstance(message);
+  }, [message]);
+
+  return <AppRoutes />;
+}
 
 export default function App() {
   return (
@@ -669,11 +693,13 @@ export default function App() {
         },
       }}
     >
-      <BrowserRouter>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </BrowserRouter>
+      <AntdApp> {/* ⬅️ Wrap with AntdApp to allow context-based notifications/messages */}
+        <BrowserRouter>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </BrowserRouter>
+      </AntdApp>
     </ConfigProvider>
   );
 }
@@ -838,7 +864,223 @@ body {
 
 ---
 
-## 12. 🧪 Testing with the Backend API
+## 12. 🔁 Advanced: Implementing Frontend Refresh Tokens (Silent Refresh)
+
+When using short-lived access tokens (e.g. 15 minutes) for security, you don't want the user to be kicked out to the login screen every time the token expires. Instead, you use a **Refresh Token** to silently obtain a new access token behind the scenes.
+
+Here is how to implement the frontend silent refresh flow.
+
+### Step 1 — Store and Revoke the Refresh Token in `AuthContext.jsx`
+
+Open `src/context/AuthContext.jsx`. We need to:
+1. Store the `refreshToken` in `localStorage` when logging in.
+2. In the `logout()` handler, call the backend `POST /auth/logout` to revoke the token on the server, and clear it from the browser storage.
+
+Update the `login` and `logout` handlers in `src/context/AuthContext.jsx`:
+
+```jsx
+// 1) Update the login function to save the refreshToken
+const login = async (phone, password) => {
+  setLoading(true);
+  try {
+    const response = await api.post('/auth/login', { phone, password });
+    
+    const token = response.token;
+    const refreshToken = response.refreshToken; // Read from backend response
+    const authenticatedUser = response.data;
+    
+    localStorage.setItem('token', token);
+    localStorage.setItem('refreshToken', refreshToken); // Save refresh token
+    localStorage.setItem('user', JSON.stringify(authenticatedUser));
+    
+    setUser(authenticatedUser);
+    return authenticatedUser;
+  } finally {
+    setLoading(false);
+  }
+};
+
+// 2) Update the logout function to call backend logout and delete refresh token
+const logout = async () => {
+  const refreshToken = localStorage.getItem('refreshToken');
+  if (refreshToken) {
+    try {
+      // Invalidate the token on the backend
+      await api.post('/auth/logout', { refreshToken });
+    } catch (err) {
+      console.error("Logout request failed:", err);
+    }
+  }
+  
+  // Clear local storage and state
+  localStorage.removeItem('token');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('user');
+  setUser(null);
+};
+```
+
+---
+
+### Step 2 — Silent Refresh Interceptor in `api.js`
+
+Open `src/services/api.js`. Currently, on a `401 Unauthorized` response, we immediately redirect to `/login`. 
+
+Instead, we want to:
+1. Intercept the `401` response.
+2. Call `POST /auth/refresh` with the stored `refreshToken`.
+3. If the refresh succeeds:
+   - Save the new `accessToken`.
+   - Update the original failed request with the new token.
+   - Retry the request.
+4. If the refresh fails (or the refresh token itself is expired):
+   - Redirect to `/login`.
+
+To handle multiple API calls failing simultaneously (concurrency), we use:
+- `isRefreshing`: A flag to ensure we only make one refresh request at a time.
+- `failedQueue`: An array to queue other failed requests until the new token is fetched, then execute them all.
+
+Replace the response interceptor in `src/services/api.js` with the following:
+
+```javascript
+import axios from 'axios';
+
+let messageInstance = null;
+
+// Dynamically registers the theme-aware message instance from App component
+export const registerMessageInstance = (msg) => {
+  messageInstance = msg;
+};
+
+const showError = (msg) => {
+  if (messageInstance) {
+    messageInstance.error(msg);
+  } else {
+    console.error(msg);
+  }
+};
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request Interceptor: Attach access token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Concurrency queue to hold multiple failed requests during refresh
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
+// Response Interceptor: Handle errors and refresh tokens
+api.interceptors.response.use(
+  (response) => response.data,
+  async (error) => {
+    const originalRequest = error.config;
+    const status = error.response?.status;
+    const errMsg = error.response?.data?.message || 'An error occurred. Please try again.';
+
+    // Check if 401 and not already retried
+    if (status === 401 && !originalRequest._retry) {
+      if (originalRequest.url === '/auth/login' || originalRequest.url === '/auth/refresh') {
+        // If login or refresh endpoint returns 401, clear credentials and log out
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        // Queue this request if we are already fetching a new token
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (!refreshToken) {
+        // No refresh token available, must log in again
+        showError('Session expired. Please login again.');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        return Promise.reject(error);
+      }
+
+      try {
+        // Request a new access token
+        const response = await axios.post(`${api.defaults.baseURL}/auth/refresh`, {
+          refreshToken,
+        });
+
+        const newAccessToken = response.data.token;
+        localStorage.setItem('token', newAccessToken);
+
+        // Update headers & retry original request
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        processQueue(null, newAccessToken);
+
+        return api(originalRequest);
+      } catch (refreshError) {
+        // Refresh token is invalid/expired, clean up and redirect
+        processQueue(refreshError, null);
+        showError('Session expired. Please login again.');
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    if (status === 403) {
+      showError('Forbidden: You do not have permission.');
+    } else if (status !== 401) {
+      showError(errMsg);
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+export default api;
+```
+
+---
+
+## 13. 🧪 Testing with the Backend API
 
 1. Start your backend API server on port 5000 (`http://localhost:5000`).
 2. Start your frontend development server (`npm run dev`).
@@ -854,7 +1096,7 @@ body {
 
 ---
 
-## 13. 🛠 Common Errors & Fixes
+## 14. 🛠 Common Errors & Fixes
 
 | Symptom | Likely Cause | Fix |
 |---|---|---|
@@ -865,7 +1107,7 @@ body {
 
 ---
 
-## 14. 📋 Completion Checklist
+## 15. 📋 Completion Checklist
 
 - [x] Installed `antd`, `@ant-design/icons`, `axios`, `react-router-dom`.
 - [x] Created `api.js` with request interceptor (`Authorization: Bearer token`).
@@ -877,4 +1119,6 @@ body {
 - [x] Integrated `ConfigProvider` custom branding in `App.jsx`.
 - [x] Configured `main.jsx` and `index.css` for custom typography and styling.
 - [x] Added dynamic cards and status checks to `DashboardPage.jsx`.
+- [ ] Added Refresh Token management to `AuthContext.jsx` (`localStorage` & server revocation logout).
+- [ ] Implemented Axios response interceptor for silent token refresh queue.
 

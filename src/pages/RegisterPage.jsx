@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, Form, Input, Select, Button, Typography, message } from "antd";
+import { Card, Form, Input, Select, Button, Typography, App } from "antd";
 import {
   UserOutlined,
   PhoneOutlined,
@@ -17,6 +17,7 @@ const { Option } = Select;
 export default function RegisterPage() {
   const { register, loading } = useAuth();
   const navigate = useNavigate();
+  const { message } = App.useApp(); // ⬅️ Contextual message API
 
   const onFinish = async (values) => {
     if (values.password !== values.confirm_password) {
@@ -110,7 +111,7 @@ export default function RegisterPage() {
           >
             <Input
               prefix={<PhoneOutlined className="text-slate-400" />}
-              placeholder="0123456789"
+              placeholder="096123456"
             />
           </Form.Item>
 
@@ -152,7 +153,7 @@ export default function RegisterPage() {
               <span className="font-semibold text-slate-600">Account Type</span>
             }
           >
-            <Select dropdownStyle={{ borderRadius: "12px" }}>
+            <Select>
               <Option value="student">Student (Learn courses)</Option>
               <Option value="instructor">Instructor (Teach courses)</Option>
             </Select>

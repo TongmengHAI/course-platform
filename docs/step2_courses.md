@@ -5,19 +5,33 @@ A step-by-step guide for building the Course Catalog, Detail Page, and Creator/E
 > **Stack:** React 19 · Ant Design (`antd`) · Axios · React Router DOM
 > **You will build:** `CourseCatalogPage.jsx`, `CourseDetailPage.jsx`, `CourseEditorPage.jsx` and configure their routes.
 > **You will learn:** Fetching listings from APIs, applying search queries and filters, using React Router path parameters, and building Ant Design Forms.
+## 👥 Access Matrix & Roles
+
+Here is a breakdown of what each user role is permitted to perform in the course management flow:
+
+| Role | Browse Catalog (`/courses`) | View Detail (`/courses/:id`) | Create Course | Edit Course | UI Page Views |
+|---|:---:|:---:|:---:|:---:|---|
+| **Guest (Unauthenticated)** | ❌ | ❌ | ❌ | ❌ | Redirected to `/login` |
+| **Student** | ✅ | ✅ | ❌ | ❌ | `CourseCatalogPage`, `CourseDetailPage` |
+| **Instructor** | ✅ | ✅ | ✅ (Own) | ✅ (Own) | All catalog views + `CourseEditorPage` |
+| **Admin** | ✅ | ✅ | ✅ (All) | ✅ (All) | All catalog views + `CourseEditorPage` |
+
+> [!NOTE]
+> Instructors are authorized to create and manage their own courses on the database level, while Admins have permission to manage all courses globally.
 
 ---
 
 ## 📚 Table of Contents
 
-1. [Part A — Setting Up Routes & Navigation](#part-a---setting-up-routes--navigation)
-2. [Part B — Building the Course Catalog Page](#part-b---building-the-course-catalog-page)
-3. [Part C — Building the Course Detail Page](#part-c---building-the-course-detail-page)
-4. [Part D — Building the Course Editor Page (Create & Edit)](#part-d---building-the-course-editor-page-create--edit)
-5. [Common Errors & Fixes](#common-errors--fixes)
-6. [Completion Checklist](#completion-checklist)
-
----
+1. [Access Matrix & Roles](#-access-matrix--roles)
+2. [Part A — Setting Up Routes & Navigation](#part-a---setting-up-routes--navigation)
+3. [Part B — Building the Course Catalog Page](#part-b---building-the-course-catalog-page)
+4. [Part C — Building the Course Detail Page](#part-c---building-the-course-detail-page)
+5. [Part D — Building the Course Editor Page (Create & Edit)](#part-d---building-the-course-editor-page-create--edit)
+6. [Part E — Listing Owned Courses on Instructor Dashboard](#part-e---listing-owned-courses-on-instructor-dashboard)
+7. [Part F — Building the Admin Dashboard Page](#part-f---building-the-admin-dashboard-page)
+8. [Common Errors & Fixes](#common-errors--fixes)
+9. [Completion Checklist](#completion-checklist)
 
 ## Part A — Setting Up Routes & Navigation
 
@@ -35,6 +49,7 @@ import LoginPage from "../pages/LoginPage";
 import RegisterPage from "../pages/RegisterPage";
 import StudentDashboardPage from '../pages/StudentDashboardPage';
 import InstructorDashboardPage from '../pages/InstructorDashboardPage';
+import AdminDashboardPage from '../pages/AdminDashboardPage'; // ⬅️ Import Admin Dashboard
 
 // Import newly built pages
 import CourseCatalogPage from '../pages/CourseCatalogPage';
@@ -57,11 +72,16 @@ export default function AppRoutes() {
           <Route path="/student/dashboard" element={<StudentDashboardPage />} />
         </Route>
 
-        {/* Protected Routes for Instructor only */}
+        {/* Protected Routes for Instructor */}
         <Route element={<ProtectedRoute allowedRoles={["instructor", "admin"]} />}>
           <Route path="/instructor/dashboard" element={<InstructorDashboardPage />} />
           <Route path="/instructor/courses/new" element={<CourseEditorPage />} />
           <Route path="/instructor/courses/edit/:id" element={<CourseEditorPage />} />
+        </Route>
+
+        {/* Protected Routes for Admin only */}
+        <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+          <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
         </Route>
 
         {/* Fallback routing */}
@@ -74,16 +94,96 @@ export default function AppRoutes() {
 ```
 
 ### Step A.2 — Integrate Catalog link in `Navbar.jsx`
-Add a "Browse Courses" tab in the navbar visible to all authenticated accounts.
+Update the Logo brand link to direct authenticated users to the courses page, and add a "Browse Courses" tab in the navbar.
 
 `src/components/Navbar.jsx`
 ```jsx
-// Add adjacent to your logo brand inside Navbar.jsx return statement:
-{isAuthenticated && (
-  <Link to="/courses" className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition ml-8">
-    Browse Courses
-  </Link>
-)}
+import React from 'react';
+import { Layout, Button, Dropdown, Avatar, Space, Tag } from 'antd';
+import { UserOutlined, LogoutOutlined, DashboardOutlined, BookOutlined } from '@ant-design/icons';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+
+const { Header } = Layout;
+
+export default function Navbar() {
+  const { user, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const userMenuItems = [
+    {
+      key: 'profile',
+      label: (
+        <div className="py-2 px-1">
+          <div className="font-bold text-slate-800 text-sm">{user?.username}</div>
+          <div className="text-xs text-slate-400 mt-0.5">{user?.phone}</div>
+          <Tag color="indigo" className="mt-2 font-semibold tracking-wide border-none rounded-md px-2 py-0.5 text-2xs uppercase bg-indigo-50 text-indigo-600">
+            {user?.role}
+          </Tag>
+        </div>
+      ),
+    },
+    { type: 'divider' },
+    {
+      key: 'dashboard',
+      icon: <DashboardOutlined className="text-slate-500" />,
+      label: <span className="font-medium text-slate-700">My Dashboard</span>,
+      onClick: () => navigate(`/${user?.role}/dashboard`),
+    },
+    { type: 'divider' },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: <span className="font-medium">Logout</span>,
+      danger: true,
+      onClick: () => {
+        logout();
+        navigate('/login');
+      },
+    },
+  ];
+
+  return (
+    <Header className="bg-white/85 backdrop-blur-md sticky top-0 z-50 px-6 md:px-12 flex justify-between items-center shadow-xs border-b border-slate-100 h-16 w-full">
+      <div className="flex items-center gap-6">
+        {/* Logo link now routes to catalog when logged in, otherwise login page */}
+        <Link to={isAuthenticated ? "/courses" : "/login"} className="text-xl font-bold text-indigo-600 flex items-center gap-2 tracking-tight">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600">
+            <BookOutlined />
+          </div>
+          <span className="font-heading font-extrabold text-slate-800 text-lg">CoursePlatform</span>
+        </Link>
+
+        {/* Browse courses menu link only visible when logged in */}
+        {isAuthenticated && (
+          <Link to="/courses" className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition ml-2">
+            Browse Courses
+          </Link>
+        )}
+      </div>
+
+      <div>
+        {isAuthenticated ? (
+          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" dropdownStyle={{ borderRadius: '12px', padding: '4px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
+            <Space className="cursor-pointer hover:bg-slate-50 p-1.5 rounded-xl transition duration-150">
+              <Avatar icon={<UserOutlined />} className="bg-indigo-500 border border-indigo-200" />
+              <span className="font-medium text-slate-700 hidden sm:inline-block">{user?.username}</span>
+            </Space>
+          </Dropdown>
+        ) : (
+          <Space size="middle">
+            <Button type="text" onClick={() => navigate('/login')} className="font-semibold text-slate-600 hover:text-slate-900">
+              Sign In
+            </Button>
+            <Button type="primary" onClick={() => navigate('/register')} className="bg-indigo-600 hover:bg-indigo-700 border-none font-semibold rounded-lg shadow-xs shadow-indigo-600/10 px-4 h-9 cursor-pointer">
+              Register
+            </Button>
+          </Space>
+        )}
+      </div>
+    </Header>
+  );
+}
 ```
 
 ---
@@ -95,8 +195,8 @@ The Catalog fetches courses from `GET /courses` and allows students to filter by
 `src/pages/CourseCatalogPage.jsx`
 ```jsx
 import React, { useEffect, useState } from 'react';
-import { Card, Input, Select, Row, Col, Typography, Spin, Button } from 'antd';
-import { SearchOutlined, BookOutlined } from '@ant-design/icons';
+import { Card, Input, Select, Row, Col, Typography, Spin, Button, Tag, Rate } from 'antd';
+import { SearchOutlined, BookOutlined, FilterOutlined, StarFilled } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
@@ -130,60 +230,114 @@ export default function CourseCatalogPage() {
     fetchCourses();
   }, [search, level]);
 
+  const getLevelTagColor = (lvl) => {
+    if (lvl === 'Beginner') return 'success';
+    if (lvl === 'Intermediate') return 'processing';
+    return 'warning';
+  };
+
   return (
     <div className="min-h-[85vh] bg-slate-50/50 py-10 px-6 md:px-12 text-left animate-fadeIn">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <Title level={2} className="font-bold text-slate-800 m-0">Course Catalog</Title>
-          <Text className="text-slate-500">Explore learning material led by domain experts</Text>
+        
+        {/* Modern Hero Section */}
+        <div className="bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 text-white rounded-3xl p-8 md:p-12 mb-10 relative overflow-hidden shadow-md">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/20 via-transparent to-transparent pointer-events-none" />
+          <div className="relative z-10 max-w-2xl">
+            <span className="text-2xs font-bold tracking-wider uppercase bg-indigo-500/30 text-indigo-200 px-3 py-1 rounded-full border border-indigo-500/20">
+              E-Learning Hub
+            </span>
+            <Title level={1} className="text-white font-extrabold mt-4 mb-4 tracking-tight m-0" style={{ color: 'white' }}>
+              Expand Your Skills
+            </Title>
+            <Paragraph className="text-slate-300 text-sm md:text-base mb-0 font-normal leading-relaxed">
+              Explore professional course tracks led by domain experts. Start learning and upgrading your developer career path today.
+            </Paragraph>
+          </div>
         </div>
 
         {/* Toolbar Filter panel */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8 bg-white p-4 rounded-xl border border-slate-100 shadow-xs">
-          <Input
-            prefix={<SearchOutlined className="text-slate-400" />}
-            placeholder="Search courses..."
-            allowClear
-            onChange={(e) => setSearch(e.target.value)}
-            className="max-w-md h-10"
-          />
-          <Select
-            placeholder="Filter by Level"
-            allowClear
-            onChange={setLevel}
-            className="w-48 h-10"
-          >
-            <Option value="Beginner">Beginner</Option>
-            <Option value="Intermediate">Intermediate</Option>
-            <Option value="Advanced">Advanced</Option>
-          </Select>
+        <div className="flex flex-col sm:flex-row gap-4 mb-8 bg-white p-5 rounded-2xl border border-slate-100 shadow-xs justify-between items-center">
+          <div className="flex items-center gap-2">
+            <FilterOutlined className="text-indigo-600 text-lg" />
+            <Text className="font-bold text-slate-700 text-sm">Filter Options</Text>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+            <Input
+              prefix={<SearchOutlined className="text-slate-400" />}
+              placeholder="Search by title, desc..."
+              allowClear
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full sm:w-80 h-10 rounded-xl"
+            />
+            <Select
+              placeholder="Difficulty Level"
+              allowClear
+              onChange={setLevel}
+              className="w-full sm:w-48 h-10"
+            >
+              <Option value="Beginner">Beginner</Option>
+              <Option value="Intermediate">Intermediate</Option>
+              <Option value="Advanced">Advanced</Option>
+            </Select>
+          </div>
         </div>
 
         {loading ? (
           <div className="flex justify-center py-20"><Spin size="large" /></div>
         ) : (
           <Row gutter={[24, 24]}>
-            {courses.map((course) => (
-              <Col xs={24} sm={12} lg={8} key={course.id}>
-                <Card
-                  hoverable
-                  className="shadow-xs rounded-2xl border border-slate-100 overflow-hidden hover-lift flex flex-col h-full"
-                  bodyStyle={{ padding: '20px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}
-                  onClick={() => navigate(`/courses/${course.id}`)}
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded text-xs uppercase">{course.level || 'All Levels'}</span>
-                    <span className="text-slate-400 text-xs">{course.category}</span>
-                  </div>
-                  <Title level={4} className="m-0 text-slate-800 font-bold line-clamp-1">{course.title}</Title>
-                  <Paragraph className="text-slate-500 text-sm mt-2 flex-grow line-clamp-2">{course.description}</Paragraph>
-                  <div className="border-t border-slate-50 pt-3 mt-4 flex items-center justify-between">
-                    <Text className="font-bold text-lg text-indigo-600">${course.price || 0}</Text>
-                    <Button type="link" className="font-semibold p-0">View Course →</Button>
-                  </div>
+            {courses.length === 0 ? (
+              <Col span={24}>
+                <Card className="text-center py-16 rounded-2xl border border-dashed border-slate-200">
+                  <BookOutlined className="text-4xl text-slate-300 mb-3" />
+                  <Title level={4} className="text-slate-700 m-0">No Courses Found</Title>
+                  <Paragraph className="text-slate-400 mt-1">Try adjusting your filters or search keywords.</Paragraph>
                 </Card>
               </Col>
-            ))}
+            ) : (
+              courses.map((course) => (
+                <Col xs={24} sm={12} lg={8} key={course.id}>
+                  <Card
+                    hoverable
+                    className="shadow-xs rounded-2xl border border-slate-100/80 overflow-hidden hover-lift flex flex-col h-full bg-white relative"
+                    styles={{ body: { padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' } }}
+                    onClick={() => navigate(`/courses/${course.id}`)}
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <Tag color={getLevelTagColor(course.level)} className="font-semibold px-2 py-0.5 rounded-md border-none uppercase text-3xs">
+                        {course.level || 'All Levels'}
+                      </Tag>
+                      <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">{course.category || 'Development'}</span>
+                    </div>
+                    
+                    <Title level={4} className="m-0 text-slate-800 font-bold tracking-tight line-clamp-1 mb-2 hover:text-indigo-600 transition">
+                      {course.title}
+                    </Title>
+                    
+                    <Paragraph className="text-slate-500 text-xs leading-relaxed mt-1 flex-grow line-clamp-3 mb-6">
+                      {course.description}
+                    </Paragraph>
+
+                    <div className="flex items-center gap-1.5 mb-4">
+                      <StarFilled className="text-amber-400 text-xs" />
+                      <Text className="text-slate-700 font-bold text-xs">4.7</Text>
+                      <Text className="text-slate-400 text-2xs">(42 reviews)</Text>
+                    </div>
+                    
+                    <div className="border-t border-slate-100 pt-4 flex items-center justify-between mt-auto">
+                      <div className="flex flex-col">
+                        <span className="text-slate-400 text-3xs uppercase font-bold tracking-wider">Fee</span>
+                        <Text className="font-extrabold text-lg text-indigo-600">${course.price || 0}</Text>
+                      </div>
+                      <Button type="primary" className="bg-indigo-600 hover:bg-indigo-700 border-none font-semibold rounded-xl text-xs px-4 h-9 cursor-pointer">
+                        Explore
+                      </Button>
+                    </div>
+                  </Card>
+                </Col>
+              ))
+            )}
           </Row>
         )}
       </div>
@@ -202,8 +356,8 @@ This fetches data for a single course via route ID parameters (`GET /courses/:id
 ```jsx
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Button, Spin, Typography, Tag } from 'antd';
-import { ArrowLeftOutlined } from '@ant-design/icons';
+import { Card, Button, Spin, Typography, Tag, Divider, Collapse, Row, Col } from 'antd';
+import { ArrowLeftOutlined, PlayCircleOutlined, GlobalOutlined, FieldTimeOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import api from '../services/api';
 
 const { Title, Paragraph, Text } = Typography;
@@ -228,36 +382,112 @@ export default function CourseDetailPage() {
     fetchCourse();
   }, [id]);
 
+  const getLevelTagColor = (lvl) => {
+    if (lvl === 'Beginner') return 'success';
+    if (lvl === 'Intermediate') return 'processing';
+    return 'warning';
+  };
+
   if (loading) return <div className="flex justify-center py-20"><Spin size="large" /></div>;
   if (!course) return <div className="text-center py-20"><Text type="danger">Course not found</Text></div>;
 
+  // Mock syllabus data for visual placeholder layout
+  const syllabusItems = [
+    {
+      key: '1',
+      label: <span className="font-bold text-slate-700">Section 1: Course Fundamentals</span>,
+      children: (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2"><PlayCircleOutlined className="text-indigo-600" /> <Text>1.1 Core introduction setup</Text></div>
+          <div className="flex items-center gap-2"><PlayCircleOutlined className="text-indigo-600" /> <Text>1.2 Reviewing developer toolkit basics</Text></div>
+        </div>
+      ),
+    }
+  ];
+
   return (
     <div className="min-h-[85vh] bg-slate-50/50 py-10 px-6 md:px-12 text-left">
-      <div className="max-w-4xl mx-auto">
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/courses')} className="mb-6 rounded-lg font-semibold">
+      <div className="max-w-5xl mx-auto">
+        
+        {/* Back Button */}
+        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/courses')} className="mb-6 rounded-xl font-semibold border-slate-200">
           Back to Catalog
         </Button>
 
-        <Card className="shadow-xs rounded-2xl border border-slate-100 p-4 bg-white animate-fadeIn">
-          <div className="flex items-center gap-3 mb-4">
-            <Tag color="indigo" className="m-0 font-semibold px-2 py-0.5 rounded text-xs uppercase">{course.level}</Tag>
-            <Tag className="m-0 text-slate-500 font-semibold px-2 py-0.5 rounded text-xs uppercase">{course.category}</Tag>
-          </div>
-
-          <Title level={2} className="font-extrabold text-slate-800 m-0 mb-4">{course.title}</Title>
-          <Paragraph className="text-slate-600 text-base leading-relaxed mb-6 whitespace-pre-wrap">{course.description}</Paragraph>
-
-          <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-8">
-            <div>
-              <Text className="text-slate-400 block text-xs font-semibold uppercase tracking-wider">Instructor</Text>
-              <Text className="font-bold text-slate-700 text-base">{course.instructor?.username || 'Unknown'}</Text>
+        {/* Two Column Layout */}
+        <Row gutter={[28, 28]}>
+          
+          {/* Left Column: Course details & Syllabus */}
+          <Col xs={24} md={15}>
+            <div className="flex items-center gap-2.5 mb-4">
+              <Tag color={getLevelTagColor(course.level)} className="m-0 font-semibold px-2 py-0.5 rounded-md border-none uppercase text-3xs">
+                {course.level}
+              </Tag>
+              <Tag className="m-0 text-slate-500 font-semibold px-2 py-0.5 rounded-md border-slate-200 uppercase text-3xs">
+                {course.category}
+              </Tag>
             </div>
-            <div>
-              <Text className="text-slate-400 block text-xs font-semibold uppercase tracking-wider">Course Fee</Text>
-              <Text className="font-extrabold text-2xl text-indigo-600">${course.price}</Text>
-            </div>
-          </div>
-        </Card>
+
+            <Title level={2} className="font-extrabold text-slate-800 tracking-tight m-0 mb-6">
+              {course.title}
+            </Title>
+
+            <Card className="shadow-xs rounded-2xl border border-slate-100 p-2 bg-white mb-8">
+              <Title level={4} className="font-bold text-slate-800 mb-4 mt-0">About Course</Title>
+              <Paragraph className="text-slate-600 text-sm leading-relaxed mb-0 whitespace-pre-wrap">
+                {course.description || "No description provided."}
+              </Paragraph>
+            </Card>
+
+            <Card className="shadow-xs rounded-2xl border border-slate-100 p-2 bg-white">
+              <Title level={4} className="font-bold text-slate-800 mb-4 mt-0">Syllabus Curriculum</Title>
+              <Collapse items={syllabusItems} defaultActiveKey={['1']} className="bg-slate-50 border-none rounded-xl" />
+            </Card>
+          </Col>
+
+          {/* Right Column: Sticky Pricing & Action Panel */}
+          <Col xs={24} md={9}>
+            <Card className="shadow-md rounded-2xl border border-slate-100 bg-white sticky top-24 p-2">
+              <div className="text-center mb-6">
+                <Text className="text-slate-400 block text-xs font-bold uppercase tracking-wider mb-1">Fee</Text>
+                <Title level={1} className="font-extrabold text-indigo-600 m-0 tracking-tight" style={{ color: '#4f46e5' }}>
+                  ${course.price}
+                </Title>
+              </div>
+
+              <Divider className="my-4 border-slate-100" />
+
+              <div className="space-y-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <GlobalOutlined className="text-slate-400 text-lg" />
+                  <Text className="text-slate-600 text-xs">Self-paced learning structure</Text>
+                </div>
+                <div className="flex items-center gap-3">
+                  <FieldTimeOutlined className="text-slate-400 text-lg" />
+                  <Text className="text-slate-600 text-xs">Lifetime access to content</Text>
+                </div>
+                <div className="flex items-center gap-3">
+                  <SafetyCertificateOutlined className="text-slate-400 text-lg" />
+                  <Text className="text-slate-600 text-xs">Certificate on final milestone completion</Text>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-6">
+                <Text className="text-slate-400 block text-3xs uppercase font-bold tracking-wider mb-1">Instructor</Text>
+                <Text className="font-bold text-slate-800 text-sm block">{course.instructor?.username || 'Unknown'}</Text>
+                <Text className="text-slate-400 text-xs">{course.instructor?.email || 'instructor@test.com'}</Text>
+              </div>
+
+              {/* Action Button Area (Enrollment hooks will bind here in Step 3) */}
+              <div className="space-y-2">
+                <Button type="primary" block size="large" className="bg-indigo-600 hover:bg-indigo-700 border-none font-bold rounded-xl h-11 cursor-pointer">
+                  Explore Mode
+                </Button>
+              </div>
+            </Card>
+          </Col>
+
+        </Row>
       </div>
     </div>
   );
@@ -273,12 +503,12 @@ This page handles both Course Creation and Editing based on whether an `id` path
 `src/pages/CourseEditorPage.jsx`
 ```jsx
 import React, { useEffect, useState } from 'react';
-import { Card, Form, Input, InputNumber, Select, Button, Spin, message, Typography } from 'antd';
-import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
+import { Card, Form, Input, InputNumber, Select, Button, Spin, message, Typography, Row, Col, Tag, Avatar } from 'antd';
+import { ArrowLeftOutlined, SaveOutlined, BookOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
 
-const { Title } = Typography;
+const { Title, Paragraph, Text } = Typography;
 const { Option } = Select;
 
 export default function CourseEditorPage() {
@@ -288,6 +518,13 @@ export default function CourseEditorPage() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Watch form fields dynamically to feed the Live Preview Card on the right
+  const watchTitle = Form.useWatch('title', form);
+  const watchDescription = Form.useWatch('description', form);
+  const watchCategory = Form.useWatch('category', form);
+  const watchLevel = Form.useWatch('level', form);
+  const watchPrice = Form.useWatch('price', form);
 
   useEffect(() => {
     if (isEditMode) {
@@ -331,91 +568,519 @@ export default function CourseEditorPage() {
     }
   };
 
+  const getLevelTagColor = (lvl) => {
+    if (lvl === 'Beginner') return 'success';
+    if (lvl === 'Intermediate') return 'processing';
+    return 'warning';
+  };
+
   if (loading) return <div className="flex justify-center py-20"><Spin size="large" /></div>;
 
   return (
-    <div className="min-h-[85vh] bg-slate-50/50 py-10 px-6 md:px-12 text-left">
-      <div className="max-w-2xl mx-auto">
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/instructor/dashboard')} className="mb-6 rounded-lg font-semibold">
-          Back to Dashboard
-        </Button>
-
-        <Card className="shadow-xs rounded-2xl border border-slate-100 p-4">
-          <Title level={3} className="font-bold text-slate-800 mt-0 mb-6">
-            {isEditMode ? "Edit Course Information" : "Create New Course"}
-          </Title>
-
-          <Form
-            form={form}
-            onFinish={onFinish}
-            layout="vertical"
-            size="large"
-            requiredMark={false}
+    <div className="min-h-[85vh] bg-slate-50/50 py-10 px-6 md:px-12 text-left animate-fadeIn">
+      <div className="max-w-5xl mx-auto">
+        
+        {/* Header Toolbar */}
+        <div className="flex items-center gap-4 mb-8">
+          <Button 
+            icon={<ArrowLeftOutlined />} 
+            onClick={() => navigate('/instructor/dashboard')} 
+            className="rounded-xl font-bold h-10 border-slate-200 text-slate-600 cursor-pointer shadow-xs"
           >
-            <Form.Item
-              name="title"
-              label={<span className="font-semibold text-slate-600">Course Title</span>}
-              rules={[{ required: true, message: "Please enter the course title!" }]}
-            >
-              <Input placeholder="e.g., Introduction to React & Tailwind" />
-            </Form.Item>
+            Back
+          </Button>
+          <Title level={3} className="m-0 font-extrabold text-slate-800 tracking-tight">
+            {isEditMode ? "Edit Course Details" : "Create New Course"}
+          </Title>
+        </div>
 
-            <Form.Item
-              name="description"
-              label={<span className="font-semibold text-slate-600">Course Description</span>}
-              rules={[{ required: true, message: "Please enter the course description!" }]}
-            >
-              <Input.TextArea rows={5} placeholder="Describe the topics covered and syllabus modules..." />
-            </Form.Item>
-
-            <Form.Item
-              name="category"
-              label={<span className="font-semibold text-slate-600">Category</span>}
-              rules={[{ required: true, message: "Please select a category!" }]}
-            >
-              <Select placeholder="Choose field category">
-                <Option value="Programming">Programming</Option>
-                <Option value="Design">Design</Option>
-                <Option value="Marketing">Marketing</Option>
-                <Option value="Business">Business</Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item
-              name="level"
-              label={<span className="font-semibold text-slate-600">Course Difficulty Level</span>}
-              rules={[{ required: true, message: "Please select a difficulty level!" }]}
-            >
-              <Select placeholder="Choose target level">
-                <Option value="Beginner">Beginner</Option>
-                <Option value="Intermediate">Intermediate</Option>
-                <Option value="Advanced">Advanced</Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item
-              name="price"
-              label={<span className="font-semibold text-slate-600">Price (USD)</span>}
-              rules={[{ required: true, message: "Please enter a course fee!" }]}
-              initialValue={0}
-            >
-              <InputNumber min={0} className="w-full" formatter={value => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} parser={value => value.replace(/\$\s?|(,*)/g, '')} />
-            </Form.Item>
-
-            <Form.Item className="mt-8 mb-2">
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={submitting}
-                icon={<SaveOutlined />}
-                block
-                className="bg-indigo-600 hover:bg-indigo-700 border-none h-12 text-base rounded-xl cursor-pointer"
+        <Row gutter={[32, 32]}>
+          {/* Left Column: Form Editor Card */}
+          <Col xs={24} lg={15}>
+            <Card className="shadow-xs rounded-2xl border border-slate-100/80 p-4 md:p-6 bg-white">
+              <Form
+                form={form}
+                onFinish={onFinish}
+                layout="vertical"
+                size="large"
+                requiredMark={false}
               >
-                Save Course Details
-              </Button>
-            </Form.Item>
-          </Form>
-        </Card>
+                <Form.Item
+                  name="title"
+                  label={<span className="font-bold text-slate-700 text-xs">Course Title</span>}
+                  rules={[{ required: true, message: "Please enter the course title!" }]}
+                >
+                  <Input placeholder="e.g., Introduction to React & Tailwind" className="rounded-xl" />
+                </Form.Item>
+
+                <Form.Item
+                  name="description"
+                  label={<span className="font-bold text-slate-700 text-xs">Course Description</span>}
+                  rules={[{ required: true, message: "Please enter the course description!" }]}
+                >
+                  <Input.TextArea rows={5} placeholder="Describe the topics covered and syllabus modules..." className="rounded-xl" />
+                </Form.Item>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Form.Item
+                    name="category"
+                    label={<span className="font-bold text-slate-700 text-xs">Category</span>}
+                    rules={[{ required: true, message: "Please select a category!" }]}
+                  >
+                    <Select placeholder="Choose field category">
+                      <Option value="Programming">Programming</Option>
+                      <Option value="Design">Design</Option>
+                      <Option value="Marketing">Marketing</Option>
+                      <Option value="Business">Business</Option>
+                    </Select>
+                  </Form.Item>
+
+                  <Form.Item
+                    name="level"
+                    label={<span className="font-bold text-slate-700 text-xs">Difficulty Level</span>}
+                    rules={[{ required: true, message: "Please select a difficulty level!" }]}
+                  >
+                    <Select placeholder="Choose target level">
+                      <Option value="Beginner">Beginner</Option>
+                      <Option value="Intermediate">Intermediate</Option>
+                      <Option value="Advanced">Advanced</Option>
+                    </Select>
+                  </Form.Item>
+                </div>
+
+                <Form.Item
+                  name="price"
+                  label={<span className="font-bold text-slate-700 text-xs">Price (USD)</span>}
+                  rules={[{ required: true, message: "Please enter a course fee!" }]}
+                  initialValue={0}
+                >
+                  <InputNumber 
+                    min={0} 
+                    className="w-full rounded-xl" 
+                    formatter={value => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} 
+                    parser={value => value.replace(/\$\s?|(,*)/g, '')} 
+                  />
+                </Form.Item>
+
+                <Form.Item className="mt-8 mb-2">
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    loading={submitting}
+                    icon={<SaveOutlined />}
+                    block
+                    className="bg-indigo-600 hover:bg-indigo-700 border-none font-bold rounded-xl h-11 cursor-pointer shadow-xs"
+                  >
+                    Save Course Details
+                  </Button>
+                </Form.Item>
+              </Form>
+            </Card>
+          </Col>
+
+          {/* Right Column: Live Card Preview */}
+          <Col xs={24} lg={9}>
+            <div className="sticky top-24">
+              <Text className="text-slate-400 block text-xs font-bold uppercase tracking-wider mb-4">Live Preview</Text>
+              
+              <Card
+                className="shadow-md rounded-2xl border border-slate-100 overflow-hidden flex flex-col h-full bg-white relative"
+                styles={{ body: { padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' } }}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <Tag color={getLevelTagColor(watchLevel || 'Beginner')} className="font-semibold px-2 py-0.5 rounded-md border-none uppercase text-3xs m-0">
+                    {watchLevel || 'Beginner'}
+                  </Tag>
+                  <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">{watchCategory || 'Programming'}</span>
+                </div>
+                
+                <Title level={4} className="m-0 text-slate-800 font-bold tracking-tight line-clamp-2 mb-2 min-h-[48px]">
+                  {watchTitle || 'Untitled Course Curriculum'}
+                </Title>
+                
+                <Paragraph className="text-slate-400 text-xs leading-relaxed mt-1 flex-grow line-clamp-3 mb-6 min-h-[54px] whitespace-pre-wrap">
+                  {watchDescription || 'Fill in the description fields to preview the course card snippet in real time.'}
+                </Paragraph>
+                
+                <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-auto">
+                  <div className="flex items-center gap-2">
+                    <Avatar size="small" icon={<UserOutlined />} className="bg-indigo-100 text-indigo-600" />
+                    <span className="text-slate-500 font-semibold text-xs">Instructor</span>
+                  </div>
+                  <span className="font-extrabold text-indigo-600 text-lg">
+                    ${watchPrice !== undefined && watchPrice !== null ? watchPrice : '0'}
+                  </span>
+                </div>
+              </Card>
+            </div>
+          </Col>
+        </Row>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Part E — Listing Owned Courses on Instructor Dashboard
+
+Modify the Instructor Dashboard page to load courses created by this instructor using the URL query parameter `?instructorId=X` and render them in a clean Ant Design table with edit routes.
+
+`src/pages/InstructorDashboardPage.jsx`
+```jsx
+import React, { useEffect, useState } from 'react';
+import { Card, Typography, Button, Row, Col, Avatar, Table, Space, Spin, Tag } from 'antd';
+import { UserOutlined, PlusOutlined, EditOutlined, LogoutOutlined, BookOutlined } from '@ant-design/icons';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
+
+const { Title, Paragraph, Text } = Typography;
+
+export default function InstructorDashboardPage() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCreatedCourses = async () => {
+      try {
+        // Admins can manage all courses globally; Instructors manage only their own
+        const params = {};
+        if (user?.role !== 'admin' && user?.id) {
+          params.instructorId = user.id;
+        }
+
+        const response = await api.get('/courses', { params });
+        setCourses(response.data || []);
+      } catch (err) {
+        console.error("Error loading owned courses:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (user?.id) fetchCreatedCourses();
+  }, [user]);
+
+  const getLevelTagColor = (lvl) => {
+    if (lvl === 'Beginner') return 'success';
+    if (lvl === 'Intermediate') return 'processing';
+    return 'warning';
+  };
+
+  const columns = [
+    {
+      title: 'Course Title',
+      dataIndex: 'title',
+      key: 'title',
+      render: (text) => <span className="font-bold text-slate-800 text-sm">{text}</span>,
+    },
+    {
+      title: 'Category',
+      dataIndex: 'category',
+      key: 'category',
+      render: (text) => <span className="text-slate-500 font-medium text-xs">{text || 'N/A'}</span>,
+    },
+    {
+      title: 'Level',
+      dataIndex: 'level',
+      key: 'level',
+      render: (level) => (
+        <Tag color={getLevelTagColor(level)} className="font-semibold uppercase text-3xs border-none rounded-md px-2 py-0.5 m-0">
+          {level || 'All Levels'}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Price',
+      dataIndex: 'price',
+      key: 'price',
+      render: (val) => <span className="font-bold text-slate-700 text-sm">${val || 0}</span>,
+    },
+    {
+      title: 'Action',
+      key: 'action',
+      render: (_, record) => (
+        <Space size="middle">
+          <Button 
+            type="default"
+            icon={<EditOutlined className="text-indigo-600" />} 
+            onClick={() => navigate(`/instructor/courses/edit/${record.id}`)} 
+            className="rounded-xl font-bold text-xs flex items-center h-8 cursor-pointer border-slate-200"
+          >
+            Edit
+          </Button>
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <div className="min-h-[85vh] bg-slate-50/50 py-10 px-6 md:px-12 text-left">
+      <div className="max-w-6xl mx-auto animate-fadeIn">
+        
+        {/* Modern Welcome Banner */}
+        <div className="bg-gradient-to-r from-indigo-600 to-indigo-900 text-white rounded-3xl p-6 md:p-8 mb-8 relative overflow-hidden shadow-md flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent pointer-events-none" />
+          <div className="flex items-center gap-4 z-10">
+            <Avatar size={64} icon={<UserOutlined />} className="bg-white/20 border border-white/30 text-white shadow-sm" />
+            <div>
+              <Title level={3} className="m-0 text-white font-extrabold tracking-tight" style={{ color: 'white' }}>
+                Welcome back, {user?.username}!
+              </Title>
+              <Text className="text-indigo-200 text-xs block mt-1">{user?.role === 'admin' ? "Manage and edit all platform course curricula tracks (Admin mode)." : "Manage and edit your course curricula tracks."}</Text>
+            </div>
+          </div>
+          <Button 
+            type="default" 
+            icon={<LogoutOutlined />} 
+            onClick={() => { logout(); navigate('/login'); }} 
+            className="bg-white/10 hover:bg-white/20 text-white border-white/20 rounded-xl font-semibold h-10 px-5 cursor-pointer z-10"
+            style={{ color: 'white' }}
+          >
+            Sign Out
+          </Button>
+        </div>
+
+        {/* Action Toolbar */}
+        <div className="flex justify-between items-center mb-6">
+          <Title level={4} className="font-bold text-slate-800 m-0 tracking-tight">Course Administration</Title>
+          <Button 
+            type="primary" 
+            icon={<PlusOutlined />} 
+            onClick={() => navigate('/instructor/courses/new')} 
+            className="bg-indigo-600 hover:bg-indigo-700 border-none font-bold rounded-xl px-4 h-10 cursor-pointer flex items-center shadow-xs"
+          >
+            New Course
+          </Button>
+        </div>
+
+        {/* Course Table */}
+        {loading ? (
+          <div className="flex justify-center py-20"><Spin size="large" /></div>
+        ) : (
+          <Card className="shadow-xs border border-slate-100/80 rounded-2xl overflow-hidden p-0 bg-white">
+            <Table
+              dataSource={courses}
+              columns={columns}
+              rowKey="id"
+              pagination={{ pageSize: 5 }}
+              className="border-none"
+            />
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Part F — Building the Admin Dashboard Page
+
+Admins manage the entire platform. The Admin Dashboard includes overall platform stats and a table listing all active courses across all instructors.
+
+`src/pages/AdminDashboardPage.jsx`
+```jsx
+import React, { useEffect, useState } from 'react';
+import { Card, Typography, Button, Row, Col, Avatar, Table, Space, Spin, Tag, Statistic } from 'antd';
+import { UserOutlined, PlusOutlined, EditOutlined, LogoutOutlined, BookOutlined, TeamOutlined, TrophyOutlined } from '@ant-design/icons';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
+
+const { Title, Paragraph, Text } = Typography;
+
+export default function AdminDashboardPage() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Platform metrics
+  const [stats, setStats] = useState({
+    totalCourses: 0,
+    totalStudents: 0,
+    totalInstructors: 0
+  });
+
+  useEffect(() => {
+    const fetchAdminData = async () => {
+      try {
+        // 1. Fetch courses globally
+        const coursesResponse = await api.get('/courses', { params: { limit: 100 } });
+        const courseList = coursesResponse.data || [];
+        setCourses(courseList);
+
+        // 2. Fetch real student count
+        const studentsResponse = await api.get('/users', { params: { role: 'student', limit: 1 } });
+        const studentCount = studentsResponse.pagination?.total || studentsResponse.data?.length || 0;
+
+        // 3. Fetch real instructor count
+        const instructorsResponse = await api.get('/users', { params: { role: 'instructor', limit: 1 } });
+        const instructorCount = instructorsResponse.pagination?.total || instructorsResponse.data?.length || 0;
+
+        setStats({
+          totalCourses: coursesResponse.pagination?.total || courseList.length,
+          totalStudents: studentCount,
+          totalInstructors: instructorCount
+        });
+      } catch (err) {
+        console.error("Error loading admin dashboard data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAdminData();
+  }, []);
+
+  const getLevelTagColor = (lvl) => {
+    if (lvl === 'Beginner') return 'success';
+    if (lvl === 'Intermediate') return 'processing';
+    return 'warning';
+  };
+
+  const columns = [
+    {
+      title: 'Course Title',
+      dataIndex: 'title',
+      key: 'title',
+      render: (text) => <span className="font-bold text-slate-800 text-sm">{text}</span>,
+    },
+    {
+      title: 'Instructor',
+      dataIndex: 'instructor',
+      key: 'instructor',
+      render: (instructor) => <span className="text-slate-600 font-medium text-xs">{instructor?.username || 'System Admin'}</span>,
+    },
+    {
+      title: 'Category',
+      dataIndex: 'category',
+      key: 'category',
+      render: (text) => <span className="text-slate-500 font-medium text-xs">{text || 'N/A'}</span>,
+    },
+    {
+      title: 'Level',
+      dataIndex: 'level',
+      key: 'level',
+      render: (level) => (
+        <Tag color={getLevelTagColor(level)} className="font-semibold uppercase text-3xs border-none rounded-md px-2 py-0.5 m-0">
+          {level || 'All Levels'}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Price',
+      dataIndex: 'price',
+      key: 'price',
+      render: (val) => <span className="font-bold text-slate-700 text-sm">${val || 0}</span>,
+    },
+    {
+      title: 'Action',
+      key: 'action',
+      render: (_, record) => (
+        <Space size="middle">
+          <Button 
+            type="default"
+            icon={<EditOutlined className="text-indigo-600" />} 
+            onClick={() => navigate(`/instructor/courses/edit/${record.id}`)} 
+            className="rounded-xl font-bold text-xs flex items-center h-8 cursor-pointer border-slate-200"
+          >
+            Edit
+          </Button>
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <div className="min-h-[85vh] bg-slate-50/50 py-10 px-6 md:px-12 text-left">
+      <div className="max-w-6xl mx-auto animate-fadeIn">
+        
+        {/* Modern Welcome Banner */}
+        <div className="bg-gradient-to-r from-slate-800 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 md:p-8 mb-8 relative overflow-hidden shadow-md flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent pointer-events-none" />
+          <div className="flex items-center gap-4 z-10">
+            <Avatar size={64} icon={<UserOutlined />} className="bg-white/20 border border-white/30 text-white shadow-sm" />
+            <div>
+              <Title level={3} className="m-0 text-white font-extrabold tracking-tight" style={{ color: 'white' }}>
+                Welcome back, {user?.username}!
+              </Title>
+              <Text className="text-indigo-200 text-xs block mt-1">Platform Administrator Control Center.</Text>
+            </div>
+          </div>
+          <Button 
+            type="default" 
+            icon={<LogoutOutlined />} 
+            onClick={() => { logout(); navigate('/login'); }} 
+            className="bg-white/10 hover:bg-white/20 text-white border-white/20 rounded-xl font-semibold h-10 px-5 cursor-pointer z-10"
+            style={{ color: 'white' }}
+          >
+            Sign Out
+          </Button>
+        </div>
+
+        {/* Platform metrics */}
+        <Row gutter={[24, 24]} className="mb-8">
+          <Col xs={24} sm={8}>
+            <Card className="shadow-xs hover-lift rounded-2xl border border-slate-100/80 bg-white" styles={{ body: { padding: '24px' } }}>
+              <Statistic
+                title={<span className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Total Courses</span>}
+                value={stats.totalCourses}
+                prefix={<BookOutlined className="text-indigo-500 mr-2" />}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={8}>
+            <Card className="shadow-xs hover-lift rounded-2xl border border-slate-100/80 bg-white" styles={{ body: { padding: '24px' } }}>
+              <Statistic
+                title={<span className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Platform Students</span>}
+                value={stats.totalStudents}
+                prefix={<TeamOutlined className="text-purple-500 mr-2" />}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={8}>
+            <Card className="shadow-xs hover-lift rounded-2xl border border-slate-100/80 bg-white" styles={{ body: { padding: '24px' } }}>
+              <Statistic
+                title={<span className="text-slate-400 font-semibold uppercase tracking-wider text-xs">Active Instructors</span>}
+                value={stats.totalInstructors}
+                prefix={<TrophyOutlined className="text-amber-500 mr-2" />}
+              />
+            </Card>
+          </Col>
+        </Row>
+
+        {/* Action Toolbar */}
+        <div className="flex justify-between items-center mb-6">
+          <Title level={4} className="font-bold text-slate-800 m-0 tracking-tight">Platform Course Administration</Title>
+          <Button 
+            type="primary" 
+            icon={<PlusOutlined />} 
+            onClick={() => navigate('/instructor/courses/new')} 
+            className="bg-indigo-600 hover:bg-indigo-700 border-none font-bold rounded-xl px-4 h-10 cursor-pointer flex items-center shadow-xs"
+          >
+            New Course
+          </Button>
+        </div>
+
+        {/* Course Table */}
+        {loading ? (
+          <div className="flex justify-center py-20"><Spin size="large" /></div>
+        ) : (
+          <Card className="shadow-xs border border-slate-100/80 rounded-2xl overflow-hidden p-0 bg-white">
+            <Table
+              dataSource={courses}
+              columns={columns}
+              rowKey="id"
+              pagination={{ pageSize: 5 }}
+              className="border-none"
+            />
+          </Card>
+        )}
       </div>
     </div>
   );
