@@ -30,7 +30,7 @@ We update our course details screen to render:
 
 Open `src/pages/CourseDetailPage.jsx` and update it to fetch and render reviews.
 
-`src/pages/CourseDetailPage.jsx`
+File to update: `src/pages/CourseDetailPage.jsx`
 ```jsx
 import { Rate, List, Form, Input } from 'antd'; // ⬅️ Add imports
 
@@ -81,7 +81,7 @@ useEffect(() => {
 
 Add a form block inside the page, restricting the visibility so only logged-in students can leave a rating feedback comment.
 
-`src/pages/CourseDetailPage.jsx`
+File to update: `src/pages/CourseDetailPage.jsx`
 ```jsx
 // Inside CourseDetailPage component:
 const [submittingReview, setSubmittingReview] = useState(false);

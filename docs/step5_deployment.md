@@ -2,6 +2,8 @@
 
 This guide provides a comprehensive, step-by-step walkthrough to manually provision and deploy the **Online Course Platform** (React UI, Express API, and MySQL Database) on an Ubuntu 22.04 LTS VPS instance (Digital Ocean Droplet or Alibaba Cloud ECS).
 
+> This step is mostly environment and server configuration, not app source code editing. The main files you will work with are production environment files such as `.env`, `.env.production`, and server config files for Nginx / PM2.
+
 ---
 
 ## 📚 Table of Contents
