@@ -264,58 +264,216 @@ To show visual progress scores, we retrieve both the syllabus count and progress
 
 `src/pages/StudentDashboardPage.jsx`
 ```jsx
-// 1. Update your dynamic course card component mapping loop:
-// We render the progress bar inside the polished course card layout:
+import React, { useEffect, useState } from 'react';
+import { Card, Typography, Button, Row, Col, Statistic, Avatar, Spin, Tag, Empty, Progress, message } from 'antd';
+import { BookOutlined, UserOutlined, LogoutOutlined, RocketOutlined } from '@ant-design/icons';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
-{courses.map((course) => {
-  const progressPercent = course.completedCount && course.totalLessonsCount ? 
-    Math.round((course.completedCount / course.totalLessonsCount) * 100) : 0;
+const { Title, Paragraph, Text } = Typography;
+
+export default function StudentDashboardPage() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        // 1. Fetch courses enrolled by the logged-in student
+        const response = await api.get('/enrollments/my-courses');
+        const courseList = response.data || [];
+
+        // 2. Fetch completed lesson progress and syllabus lesson count for each course
+        const coursesWithData = await Promise.all(
+          courseList.map(async (course) => {
+            try {
+              // Fetch syllabus to get lessons list and find firstLessonId
+              const syllabusRes = await api.get(`/courses/${course.id}/syllabus`);
+              const sections = syllabusRes.data || [];
+              let allLessons = [];
+              sections.forEach(sec => {
+                if (sec.lessons) allLessons.push(...sec.lessons);
+              });
+              
+              const totalLessonsCount = allLessons.length;
+              const firstLessonId = totalLessonsCount > 0 ? allLessons[0].id : null;
+
+              // Fetch student progress for this course
+              const progressRes = await api.get(`/enrollments/${course.id}/progress`);
+              const progressRecords = progressRes.data || [];
+              const completedCount = progressRecords.filter(item => item.is_completed).length;
+
+              return {
+                ...course,
+                totalLessonsCount,
+                firstLessonId,
+                completedCount
+              };
+            } catch (err) {
+              console.error(`Failed to load progress for course ${course.id}:`, err);
+              return {
+                ...course,
+                totalLessonsCount: 0,
+                firstLessonId: null,
+                completedCount: 0
+              };
+            }
+          })
+        );
+        setCourses(coursesWithData);
+      } catch (err) {
+        console.error("Dashboard load failed:", err);
+        message.error("Failed to load learning progress.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user?.role === 'student') {
+      fetchDashboardData();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
+
+  const getLevelTagColor = (lvl) => {
+    if (lvl === 'Beginner') return 'success';
+    if (lvl === 'Intermediate') return 'processing';
+    return 'warning';
+  };
 
   return (
-    <Col xs={24} sm={12} lg={8} key={course.id}>
-      <Card 
-        hoverable
-        className="shadow-xs rounded-2xl border border-slate-100/80 overflow-hidden flex flex-col h-full bg-white transition hover-lift"
-        styles={{ body: { padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' } }}
-        onClick={() => navigate(`/courses/${course.id}`)}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <Tag color={getLevelTagColor(course.level)} className="font-semibold px-2 py-0.5 rounded-md border-none uppercase text-3xs">
-            {course.level}
-          </Tag>
-          <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">{course.category || 'Development'}</span>
-        </div>
-
-        <Title level={5} className="m-0 font-bold text-slate-800 line-clamp-1 mb-2">{course.title}</Title>
-        <Paragraph className="text-slate-500 text-xs leading-relaxed mt-1 flex-grow line-clamp-2 mb-4">{course.description}</Paragraph>
+    <div className="min-h-[85vh] bg-slate-50/50 py-10 px-6 md:px-12 text-left">
+      <div className="max-w-6xl mx-auto animate-fadeIn">
         
-        {/* Modern Progress Bar Widget */}
-        <div className="mb-6 bg-slate-50 p-3 rounded-xl border border-slate-100/50">
-          <div className="flex justify-between items-center text-3xs font-bold text-slate-400 mb-1">
-            <span>CURRICULUM PROGRESS</span>
-            <span className="text-indigo-600">{progressPercent}%</span>
+        {/* Modern Welcome Banner */}
+        <div className="bg-gradient-to-r from-indigo-600 to-indigo-900 text-white rounded-3xl p-6 md:p-8 mb-8 relative overflow-hidden shadow-md flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent pointer-events-none" />
+          <div className="flex items-center gap-4 z-10">
+            <Avatar size={64} icon={<UserOutlined />} className="bg-white/20 border border-white/30 text-white shadow-sm" />
+            <div>
+              <Title level={3} className="m-0 text-white font-extrabold tracking-tight" style={{ color: 'white' }}>
+                Welcome back, {user?.username}!
+              </Title>
+              <Text className="text-indigo-200 text-xs block mt-1">Ready to continue your learning journey?</Text>
+            </div>
           </div>
-          <Progress percent={progressPercent} size="small" showInfo={false} strokeColor="#4f46e5" trailColor="#e2e8f0" />
-        </div>
-
-        <div className="border-t border-slate-100 pt-4 mt-auto flex items-center justify-between">
-          <span className="text-xs text-slate-400">By <span className="font-semibold text-slate-600">{course.instructor?.username || 'Instructor'}</span></span>
           <Button 
-            type="link" 
-            size="small" 
-            onClick={(e) => {
-              e.stopPropagation(); // Stop card click navigation
-              navigate(`/student/courses/${course.id}/lessons/${course.firstLessonId || 1}`);
-            }}
-            className="font-bold p-0"
+            type="default" 
+            icon={<LogoutOutlined />} 
+            onClick={() => { logout(); navigate('/login'); }} 
+            className="bg-white/10 hover:bg-white/20 text-white border-white/20 rounded-xl font-semibold h-10 px-5 cursor-pointer z-10"
+            style={{ color: 'white' }}
           >
-            Start Learning →
+            Sign Out
           </Button>
         </div>
-      </Card>
-    </Col>
+
+        {/* Dashboard Statistics */}
+        <Row gutter={[20, 20]} className="mb-8">
+          <Col xs={24} sm={12}>
+            <Card className="shadow-xs rounded-2xl border border-slate-100 p-2 hover:shadow-sm transition">
+              <Statistic
+                title={<span className="text-slate-400 font-bold uppercase tracking-wider text-2xs">Active Enrollments</span>}
+                value={courses.length}
+                prefix={<BookOutlined className="text-indigo-500 mr-1.5" />}
+                valueStyle={{ fontWeight: '800', color: '#1e293b' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Card className="shadow-xs rounded-2xl border border-slate-100 p-2 bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h4 className="m-0 text-white font-bold text-sm">Discover New Topics</h4>
+                  <p className="text-indigo-100 text-3xs mt-1 mb-0 leading-relaxed">Enroll in fresh courses to enhance your skill set.</p>
+                </div>
+                <Button onClick={() => navigate('/courses')} className="bg-white hover:bg-slate-50 text-indigo-600 font-bold border-none rounded-xl h-9 px-4 shadow-sm cursor-pointer ml-4">
+                  Browse Catalog
+                </Button>
+              </div>
+            </Card>
+          </Col>
+        </Row>
+
+        <Title level={4} className="font-bold text-slate-800 mb-6 tracking-tight">My Learning List</Title>
+
+        {loading ? (
+          <div className="flex justify-center py-10"><Spin size="large" /></div>
+        ) : (
+          <Row gutter={[24, 24]}>
+            {courses.length === 0 ? (
+              <Col span={24}>
+                <Card className="text-center py-16 rounded-2xl border border-dashed border-slate-200 bg-white">
+                  <BookOutlined className="text-4xl text-slate-300 mb-3" />
+                  <Title level={4} className="text-slate-700 m-0">No Enrolled Courses</Title>
+                  <Paragraph className="text-slate-400 mt-1 mb-4">You are not enrolled in any courses yet.</Paragraph>
+                  <Button type="primary" onClick={() => navigate('/courses')} className="bg-indigo-600 hover:bg-indigo-700 border-none rounded-xl font-bold h-10 px-5 shadow-xs cursor-pointer">
+                    Browse Courses
+                  </Button>
+                </Card>
+              </Col>
+            ) : (
+              courses.map((course) => {
+                const progressPercent = course.completedCount && course.totalLessonsCount ? 
+                  Math.round((course.completedCount / course.totalLessonsCount) * 100) : 0;
+
+                return (
+                  <Col xs={24} sm={12} lg={8} key={course.id}>
+                    <Card 
+                      hoverable
+                      className="shadow-xs rounded-2xl border border-slate-100/80 overflow-hidden flex flex-col h-full bg-white transition hover-lift"
+                      styles={{ body: { padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' } }}
+                      onClick={() => navigate(`/student/courses/${course.id}/lessons/${course.firstLessonId || 1}`)}
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <Tag color={getLevelTagColor(course.level)} className="font-semibold px-2 py-0.5 rounded-md border-none uppercase text-3xs">
+                          {course.level}
+                        </Tag>
+                        <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">{course.category || 'Development'}</span>
+                      </div>
+
+                      <Title level={5} className="m-0 font-bold text-slate-800 line-clamp-1 mb-2">{course.title}</Title>
+                      <Paragraph className="text-slate-500 text-xs leading-relaxed mt-1 flex-grow line-clamp-2 mb-4">{course.description}</Paragraph>
+                      
+                      {/* Modern Progress Bar Widget */}
+                      <div className="mb-6 bg-slate-50 p-3 rounded-xl border border-slate-100/50 animate-fadeIn">
+                        <div className="flex justify-between items-center text-3xs font-bold text-slate-400 mb-1">
+                          <span>CURRICULUM PROGRESS</span>
+                          <span className="text-indigo-600">{progressPercent}%</span>
+                        </div>
+                        <Progress percent={progressPercent} size="small" showInfo={false} strokeColor="#4f46e5" trailColor="#e2e8f0" />
+                      </div>
+
+                      <div className="border-t border-slate-100 pt-4 mt-auto flex items-center justify-between">
+                        <span className="text-xs text-slate-400">By <span className="font-semibold text-slate-600">{course.instructor?.username || 'Instructor'}</span></span>
+                        <Button 
+                          type="link" 
+                          size="small" 
+                          onClick={(e) => {
+                            e.stopPropagation(); // Stop card click navigation
+                            navigate(`/student/courses/${course.id}/lessons/${course.firstLessonId || 1}`);
+                          }}
+                          className="font-bold p-0"
+                        >
+                          Start Learning →
+                        </Button>
+                      </div>
+                    </Card>
+                  </Col>
+                );
+              })
+            )}
+          </Row>
+        )}
+      </div>
+    </div>
   );
-})}
+}
 ```
 
 ---

@@ -206,8 +206,8 @@ Modify the Student Dashboard to fetch the enrolled courses list from `GET /enrol
 `src/pages/StudentDashboardPage.jsx`
 ```jsx
 import React, { useEffect, useState } from 'react';
-import { Card, Typography, Button, Row, Col, Statistic, Avatar, Spin, Tag } from 'antd';
-import { BookOutlined, UserOutlined, LogoutOutlined, StarOutlined } from '@ant-design/icons';
+import { Card, Typography, Button, Row, Col, Statistic, Avatar, Spin, Tag, Empty } from 'antd';
+import { BookOutlined, UserOutlined, LogoutOutlined, RocketOutlined } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
@@ -231,8 +231,12 @@ export default function StudentDashboardPage() {
         setLoading(false);
       }
     };
-    fetchMyCourses();
-  }, []);
+    if (user?.role === 'student') {
+      fetchMyCourses();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
 
   const getLevelTagColor = (lvl) => {
     if (lvl === 'Beginner') return 'success';
@@ -318,7 +322,7 @@ export default function StudentDashboardPage() {
                     hoverable
                     className="shadow-xs rounded-2xl border border-slate-100/80 overflow-hidden flex flex-col h-full bg-white transition hover-lift"
                     styles={{ body: { padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' } }}
-                    onClick={() => navigate(`/courses/${course.id}`)}
+                    onClick={() => navigate(`/courses/${course.id}/classroom`)}
                   >
                     <div className="flex items-center justify-between mb-4">
                       <Tag color={getLevelTagColor(course.level)} className="font-semibold px-2 py-0.5 rounded-md border-none uppercase text-3xs">
