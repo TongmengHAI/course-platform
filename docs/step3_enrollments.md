@@ -322,7 +322,7 @@ export default function StudentDashboardPage() {
                     hoverable
                     className="shadow-xs rounded-2xl border border-slate-100/80 overflow-hidden flex flex-col h-full bg-white transition hover-lift"
                     styles={{ body: { padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' } }}
-                    onClick={() => navigate(`/courses/${course.id}/classroom`)}
+                    onClick={() => navigate(`/student/courses/${course.id}/lessons/1`)}
                   >
                     <div className="flex items-center justify-between mb-4">
                       <Tag color={getLevelTagColor(course.level)} className="font-semibold px-2 py-0.5 rounded-md border-none uppercase text-3xs">
@@ -348,6 +348,79 @@ export default function StudentDashboardPage() {
     </div>
   );
 }
+```
+
+---
+
+## Part C — Adding a Classroom Placeholder for Step 4 (Classroom Coming Soon)
+
+Since the student dashboard card and details page link to `/student/courses/:courseId/lessons/1` (the Lesson Classroom Viewer), which will be fully implemented in **Step 4**, we create a friendly placeholder page in Step 3 so the classroom trigger displays a "Coming Soon" view instead of a broken route during your demo.
+
+### 1. Create the placeholder page:
+`src/pages/ComingSoonPage.jsx`
+```jsx
+import React from 'react';
+import { Result, Button, Card, Typography } from 'antd';
+import { RocketOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { useNavigate, useParams } from 'react-router-dom';
+
+const { Title, Paragraph, Text } = Typography;
+
+export default function ComingSoonPage() {
+  const navigate = useNavigate();
+  const { courseId } = useParams();
+
+  return (
+    <div className="min-h-[85vh] bg-slate-50/50 flex items-center justify-center py-10 px-6">
+      <Card className="max-w-md w-full shadow-md rounded-3xl border border-slate-100 p-4 text-center bg-white animate-fadeIn">
+        <Result
+          icon={<RocketOutlined className="text-indigo-600 text-6xl animate-bounce" />}
+          title={
+            <Title level={3} className="m-0 font-extrabold text-slate-800 tracking-tight">
+              Classroom Coming Soon!
+            </Title>
+          }
+          subTitle={
+            <div className="space-y-3 mt-2">
+              <Paragraph className="text-slate-500 text-sm leading-relaxed mb-0">
+                You successfully enrolled in Course ID <Text className="font-bold text-indigo-600">#{courseId}</Text>!
+              </Paragraph>
+              <Paragraph className="text-slate-400 text-xs leading-relaxed mb-0">
+                We are currently demonstrating **Step 3 (Enrollment Flow)**. The interactive video learning player and curriculum sidebar will be implemented in the next step: **Step 4 (Lessons & Progress)**.
+              </Paragraph>
+            </div>
+          }
+          extra={[
+            <Button
+              type="primary"
+              key="back"
+              icon={<ArrowLeftOutlined />}
+              onClick={() => navigate('/student/dashboard')}
+              className="bg-indigo-600 hover:bg-indigo-700 border-none font-bold rounded-xl h-11 px-6 cursor-pointer"
+            >
+              Back to Dashboard
+            </Button>
+          ]}
+        />
+      </Card>
+    </div>
+  );
+}
+```
+
+### 2. Update routing file:
+`src/routes/AppRoutes.jsx`
+Import `ComingSoonPage` and register it inside the protected student routes block:
+```jsx
+import ComingSoonPage from '../pages/ComingSoonPage';
+
+// Inside your Routes block:
+<Route element={<ProtectedRoute allowedRoles={["student", "instructor", "admin"]} />}>
+  <Route path="/courses" element={<CourseCatalogPage />} />
+  <Route path="/courses/:id" element={<CourseDetailPage />} />
+  <Route path="/student/dashboard" element={<StudentDashboardPage />} />
+  <Route path="/student/courses/:courseId/lessons/:lessonId" element={<ComingSoonPage />} />
+</Route>
 ```
 
 ---
